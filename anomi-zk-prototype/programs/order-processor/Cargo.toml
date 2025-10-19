@@ -1,0 +1,27 @@
+[package]
+name = "order-processor"
+version = "0.1.0"
+description = "OrderProcessor Program - Core ZK settlement with finalize_trade instruction"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "order_processor"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+
+[dependencies]
+anchor-lang = "0.32.1"
+order-store = { path = "../order-store", features = ["cpi"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

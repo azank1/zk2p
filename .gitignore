@@ -1,9 +1,20 @@
-./home/zan_yder/serum-OpenBook-prototype/serum-dex
+# Exclude all directories except anomi-zk-prototype
+openbook-v2/
+serum-dex/
+memory-summarizer/
+zk2p/
 
-openbook-v2
-serum-dex
-/home/zan_yder/serum-OpenBook-prototype/memory-summarizer
-memory-summarizer
-openbook-v2
-/home/zan_yder/serum-OpenBook-prototype/serum-dex
-serum-dex
+# Node modules
+node_modules/
+
+# Build artifacts
+target/
+.anchor/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db 
