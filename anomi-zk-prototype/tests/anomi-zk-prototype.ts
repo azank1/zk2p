@@ -10,10 +10,10 @@ describe("ANOMI ZK Settlement Layer", () => {
   
   const provider = anchor.AnchorProvider.env();
   
-  // Get program instances
-  const marketProgram = anchor.workspace.Market as Program<any>;
-  const orderStoreProgram = anchor.workspace.OrderStore as Program<any>;
-  const orderProcessorProgram = anchor.workspace.OrderProcessor as Program<any>;
+  // Get program instances with explicit any type to avoid deep type instantiation
+  const marketProgram = anchor.workspace.Market as Program;
+  const orderStoreProgram = anchor.workspace.OrderStore as Program;
+  const orderProcessorProgram = anchor.workspace.OrderProcessor as Program;
   
   // Test trader keypairs
   const trader1 = Keypair.generate();
@@ -64,14 +64,14 @@ describe("ANOMI ZK Settlement Layer", () => {
         matchedOrder: matchedOrderPda,
         orderStoreProgram: orderStoreProgram.programId,
         systemProgram: SystemProgram.programId,
-      })
+      } as any)
       .signers([trader1])
       .rpc();
     
     console.log(`✅ Create bid transaction: ${createBidTx}`);
     
     // Step 4: Verify MatchedOrder was created in Pending status
-  const matchedOrderAccount = await orderStoreProgram.account["matchedOrder"].fetch(matchedOrderPda);
+    const matchedOrderAccount = await (orderStoreProgram.account as any).matchedOrder.fetch(matchedOrderPda);
     console.log(`📊 MatchedOrder Status: ${JSON.stringify(matchedOrderAccount.status)}`);
     console.log(`📊 Amount: ${matchedOrderAccount.amount.toString()}`);
     console.log(`📊 Price: ${matchedOrderAccount.price.toString()}`);
@@ -125,14 +125,14 @@ describe("ANOMI ZK Settlement Layer", () => {
         matchedOrder: matchedOrderPda,
         authority: trader1.publicKey,
         orderStoreProgram: orderStoreProgram.programId,
-      })
+      } as any)
       .signers([trader1])
       .rpc();
     
     console.log(`✅ Finalize trade transaction: ${finalizeTradeTx}`);
     
     // Step 7: Verify trade was settled
-  const settledOrder = await orderStoreProgram.account["matchedOrder"].fetch(matchedOrderPda);
+    const settledOrder = await (orderStoreProgram.account as any).matchedOrder.fetch(matchedOrderPda);
     console.log(`📊 Final Status: ${JSON.stringify(settledOrder.status)}`);
     console.log(`📊 Settled At: ${new Date(settledOrder.settledAt.toNumber() * 1000).toISOString()}`);
     
@@ -174,7 +174,7 @@ describe("ANOMI ZK Settlement Layer", () => {
         matchedOrder: matchedOrderPda2,
         orderStoreProgram: orderStoreProgram.programId,
         systemProgram: SystemProgram.programId,
-      })
+      } as any)
       .signers([trader2])
       .rpc();
     
@@ -191,7 +191,7 @@ describe("ANOMI ZK Settlement Layer", () => {
           matchedOrder: matchedOrderPda2,
           authority: trader2.publicKey,
           orderStoreProgram: orderStoreProgram.programId,
-        })
+        } as any)
         .signers([trader2])
         .rpc();
       
@@ -204,7 +204,7 @@ describe("ANOMI ZK Settlement Layer", () => {
     }
     
     // Verify the order is still in Pending status
-  const orderAccount = await orderStoreProgram.account["matchedOrder"].fetch(matchedOrderPda2);
+    const orderAccount = await (orderStoreProgram.account as any).matchedOrder.fetch(matchedOrderPda2);
     expect(orderAccount.status).to.have.property('pending');
     
     console.log("✅ Security test passed - invalid proofs are rejected");
