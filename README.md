@@ -1,302 +1,370 @@
-# ANOMI Protocol - ZK Settlement Layer Prototype
+# ZK2P Protocol
 
-**Status: ✅ Complete and Tested**
+A zero-knowledge peer-to-peer settlement protocol for fiat-to-crypto transactions on Solana. The system enables trustless exchange between buyers and sellers using cryptographic proofs to verify off-chain fiat payments without revealing sensitive financial information.
 
-This repository implements the ANOMI ZK-gated settlement layer prototype, demonstrating how zero-knowledge proofs can enable privacy-preserving trade settlement on Solana.
+## Architecture Overview
 
-## 🎯 What's Implemented
+The protocol implements a multi-program design with clear separation of concerns:
 
-### ✅ Multi-Program Architecture
+- **Market Program**: Order matching and token custody
+- **OrderStore Program**: Persistent state management for matched trades
+- **OrderProcessor Program**: ZK-verified settlement execution
 
-1. **Market Program** (`programs/market/`)
-   - Stub matching engine simulating instant order matching
-   - Creates MatchedOrder events via CPI to OrderStore
-   - Will be replaced with real matching engine in production
+### Design Principles
 
-2. **OrderStore Program** (`programs/order-store/`)
-   - State machine managing MatchedOrder PDAs
-   - Status lifecycle: Pending → Settled → Cancelled
-   - Persistent on-chain settlement queue
+**Separation of Concerns**: Each program has a single, well-defined responsibility.
 
-3. **OrderProcessor Program** (`programs/order-processor/`)
-   - **Core ZK implementation**: Validates Groth16 proofs on-chain
-   - Finalizes trades only with valid ZK proof
-   - Updates order status via CPI to OrderStore
+**Asynchronous Settlement**: Order matching is decoupled from settlement, accommodating the inherent delays in off-chain fiat payment systems.
 
-### ✅ Cross-Program Invocations (CPIs)
-- Market → OrderStore: Creating matched orders
-- OrderProcessor → OrderStore: Updating settlement status
+**Persistent State**: Matched trades are stored in persistent PDAs rather than transient event queues, ensuring durability across settlement delays.
 
-### ✅ Zero-Knowledge Components
-- `circuit.circom`: Circom circuit for trade settlement validation
-- `proof-generator.js`: Client-side ZK proof generation utility
-- `compile_circuit.sh`: Build script for ZK circuit compilation
+**Zero-Knowledge Privacy**: All proofs (solvency and payment) are verified on-chain without revealing underlying financial data.
 
-### ✅ Test Suite
-- End-to-end settlement flow test
-- Invalid proof rejection test
-- **Result: 2 passing (2s)** ✅
+---
 
-## 🚀 Quick Start
+## Protocol Flow
 
-### Prerequisites
-
-```bash
-# Solana CLI
-curl -sSf https://release.solana.com/stable/install | sh
-
-# Anchor (0.32.1 or higher)
-cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-avm install latest
-avm use latest
-
-# Node.js & Yarn
-# Install from https://nodejs.org/
-```
-
-### Installation
-
-```bash
-cd anomi-zk-prototype
-yarn install
-```
-
-### Running Tests
-
-**Option 1: All-in-One (Recommended for first run)**
-```bash
-anchor test
-```
-This builds programs, starts validator, deploys, and runs tests.
-
-**Option 2: Split Terminal Workflow (Faster iteration)**
-
-Terminal 1 - Start Validator:
-```bash
-anchor localnet
-```
-
-Terminal 2 - Run Tests (no rebuild):
-```bash
-anchor test --skip-build --skip-local-validator
-```
-
-# ANOMI ZK Settlement Layer - Development Guide
-
-## 🎉 Current Status: FULLY FUNCTIONAL ✅
-
-**Test Results**: 2 passing (2s)
-- ✅ Complete ANOMI ZK Settlement Flow (520ms)
-- ✅ Rejects invalid ZK proofs (424ms)
-
-## 🏗️ Architecture Overview
-
-### Program Interactions
+### State Diagram
 
 ```
-┌─────────────────┐
-│  Market Program │  (Stub - simulates matching)
-│   (create_bid)  │
-└────────┬────────┘
-         │ CPI: create_matched_order
-         ↓
-┌─────────────────┐
-│ OrderStore Prog │  (State Management)
-│  Pending Status │
-└────────┬────────┘
-         │
-         │ Read order
-         ↓
-┌─────────────────┐
-│OrderProcessor P.│  (ZK Validation)
-│  (finalize_trade│
-└────────┬────────┘
-         │ CPI: update_order_status
-         ↓
-┌─────────────────┐
-│ OrderStore Prog │
-│  Settled Status │
-└─────────────────┘
+[IDLE] 
+  │
+  │ Seller: place_ask_order()
+  │ → Transfer tokens to escrow
+  │ → Add order to book
+  ↓
+[PENDING_MATCH]
+  │
+  │ Buyer: place_bid_order(zk_solvency_proof)
+  │ → Validate ZK proof
+  │ → Match orders
+  │ → Store matched order (CPI to OrderStore)
+  │ → Remove filled orders from book
+  ↓
+[AWAITING_PAYMENT]
+  │
+  │ Buyer: Off-chain fiat transfer to Seller
+  │ → Generate ZK payment proof
+  ↓
+[AWAITING_PROOF]
+  │
+  │ Buyer: finalize_trade(order_id, zk_payment_proof)
+  │ → Validate ZK proof (OrderProcessor)
+  │ → Update status: PaymentConfirmed (CPI to OrderStore)
+  │ → Release escrowed tokens (CPI to Market)
+  │ → Update status: Settled (CPI to OrderStore)
+  ↓
+[COMPLETED]
 ```
 
-### PDA Derivation
+---
 
+## Detailed Protocol States
+
+### Initial State: IDLE
+
+**On-Chain State:**
+- Market Program deployed with empty order book
+- OrderStore Program deployed with empty persistent storage
+- OrderProcessor Program deployed and ready
+
+**Off-Chain State:**
+- Seller holds digital assets (e.g., 100 USDC)
+- Buyer holds fiat currency in traditional payment system
+
+---
+
+### Phase 1: Order Placement & Escrow
+
+**State:** `IDLE → PENDING_MATCH`
+
+**Seller Action:**
+```
+place_ask_order(amount, price, payment_method)
+```
+
+**On-Chain Execution (Market Program):**
+1. Validate order parameters (amount > 0, price > 0)
+2. Transfer tokens from seller to escrow vault (CPI to Token Program)
+3. Add ask order to on-chain order book
+4. Emit order placement event
+
+**State Transition:**
+- Escrow vault: `+100 USDC`
+- Order book: `+1 ask order`
+- Seller: Can go offline
+
+**Invariants:**
+- Tokens locked in PDA-controlled escrow
+- Order visible to all potential buyers
+- Seller cannot withdraw until order cancelled or filled
+
+---
+
+### Phase 2: Order Matching & State Persistence
+
+**State:** `PENDING_MATCH → AWAITING_PAYMENT`
+
+**Buyer Action:**
+```
+place_bid_order(amount, price, payment_method, zk_solvency_proof)
+```
+
+**On-Chain Execution (Market Program):**
+1. **Validate ZK Solvency Proof**: Verify buyer has sufficient fiat reserves
+   - If invalid → Transaction fails
+   - If valid → Continue
+2. **Match Orders**: Run matching engine against order book
+   - Find compatible ask order
+   - Calculate fill amounts
+3. **Create Matched Order**: Construct persistent state record
+   ```rust
+   MatchedOrder {
+     order_id: Pubkey,
+     buyer: Pubkey,
+     seller: Pubkey,
+     token_amount: u64,
+     fiat_amount: u64,
+     payment_method: String,
+     expiry: i64,        // 24-hour deadline
+     status: Pending
+   }
+   ```
+4. **Persist State**: CPI to OrderStore Program
+   ```
+   store_matched_order(matched_order)
+   ```
+5. **Update Order Book**: Remove filled orders
+
+**State Transition:**
+- OrderStore PDA: `+1 matched order (status: Pending)`
+- Order book: `-1 ask order`
+- Escrow vault: `100 USDC (unchanged)`
+
+**Invariants:**
+- Matched order persisted before book update
+- Tokens remain locked until settlement
+- 24-hour expiry enforced
+
+---
+
+### Phase 3: Off-Chain Fiat Transfer
+
+**State:** `AWAITING_PAYMENT → AWAITING_PROOF`
+
+**Off-Chain Actions:**
+
+1. **UI Display**: Buyer receives seller's payment details from matched order
+2. **Fiat Transfer**: Buyer initiates traditional payment (e.g., bank transfer, mobile money)
+3. **Proof Generation**: Buyer generates ZK Payment Proof
+   - Proves payment was sent to correct recipient
+   - Proves payment amount matches trade
+   - Does NOT reveal bank account details or transaction IDs
+
+**State Transition:**
+- On-chain state: `No change`
+- Off-chain state: `Fiat transferred, proof generated`
+
+**Security Properties:**
+- Payment details never stored on-chain
+- ZK proof cryptographically binds payment to trade
+- Seller cannot claim non-payment if proof is valid
+
+---
+
+### Phase 4: ZK-Gated Settlement
+
+**State:** `AWAITING_PROOF → COMPLETED`
+
+**Buyer Action:**
+```
+finalize_trade(order_id, zk_payment_proof)
+```
+
+**On-Chain Execution (OrderProcessor Program):**
+
+1. **Validate ZK Payment Proof**
+   - Verify proof is cryptographically valid
+   - Verify proof corresponds to this order_id
+   - If invalid → Transaction fails
+
+2. **Update State (First CPI to OrderStore)**
+   ```
+   update_order_status(order_id, PaymentConfirmed)
+   ```
+   - Prevents race conditions
+   - Creates audit trail
+
+3. **Release Escrowed Tokens (Permissioned CPI to Market)**
+   ```
+   release_escrowed_funds(order_id, amount, buyer)
+   ```
+   - Market Program validates caller is OrderProcessor
+   - Transfer tokens from escrow to buyer (CPI to Token Program)
+
+4. **Finalize Settlement (Second CPI to OrderStore)**
+   ```
+   update_order_status(order_id, Settled)
+   ```
+   - Mark order as complete
+   - Create immutable settlement record
+
+**State Transition:**
+- Buyer wallet: `+100 USDC`
+- Escrow vault: `-100 USDC`
+- OrderStore PDA: `order.status = Settled`
+
+**Invariants:**
+- Atomic settlement: Either all CPIs succeed or all fail
+- Payment proof validated before token release
+- Settlement record permanently on-chain
+
+---
+
+## Program Responsibilities
+
+### Market Program
+
+**Responsibilities:**
+- Order book management (add, remove, match)
+- Token escrow custody via PDA authority
+- Permissioned token release (only from OrderProcessor)
+
+**Critical Security:**
+- Escrow vault controlled by PDA (no private key)
+- `release_escrowed_funds` validates caller program ID
+- All token transfers via SPL Token Program CPIs
+
+**Key Instructions:**
+- `initialize_escrow_vault`
+- `place_ask_order`
+- `place_bid_order`
+- `release_escrowed_funds` (permissioned)
+
+---
+
+### OrderStore Program
+
+**Responsibilities:**
+- Persistent storage of matched orders
+- State transitions (Pending → PaymentConfirmed → Settled)
+- Expiry enforcement (24-hour deadline)
+
+**Data Structure:**
 ```rust
-// MatchedOrder PDA
-seeds = [
-    b"matched_order",
-    buyer.as_ref(),
-    seller.as_ref(),
-    &amount.to_le_bytes(),
-    &price.to_le_bytes()
-]
+pub struct MatchedOrder {
+    pub order_id: Pubkey,
+    pub buyer: Pubkey,
+    pub seller: Pubkey,
+    pub token_mint: Pubkey,
+    pub token_amount: u64,
+    pub fiat_amount: u64,
+    pub payment_method: String,
+    pub created_at: i64,
+    pub expiry: i64,
+    pub status: OrderStatus,
+}
+
+pub enum OrderStatus {
+    Pending,
+    PaymentConfirmed,
+    Settled,
+    Expired,
+}
 ```
 
-## 🔧 Development Workflow
-
-### Fast Iteration (Recommended)
-
-**Terminal 1 - Validator**
-```bash
-cd anomi-zk-prototype
-anchor localnet
-```
-Keep this running. Only restart when you change Rust code.
-
-**Terminal 2 - Tests**
-```bash
-cd anomi-zk-prototype
-anchor test --skip-build --skip-local-validator
-```
-Re-run instantly after TypeScript test changes.
-
-### Full Rebuild
-
-```bash
-cd anomi-zk-prototype
-anchor test
-```
-Use when changing Rust program code.
-
-## 📝 Code Locations
-
-### Programs (Rust)
-- `programs/market/src/lib.rs` - Market stub (60 lines)
-- `programs/order-store/src/lib.rs` - State management (115 lines)
-- `programs/order-processor/src/lib.rs` - ZK validation (135 lines)
-
-### Tests (TypeScript)
-- `tests/anomi-zk-prototype.ts` - E2E test suite (212 lines)
-
-### ZK Components
-- `zk-stuff/circuit.circom` - Groth16 circuit
-- `zk-stuff/proof-generator.js` - Client-side proof creation
-- `zk-stuff/compile_circuit.sh` - Circuit build script
-
-## 🐛 Debugging Tips
-
-### Check Program Logs
-```bash
-solana logs
-```
-Run in another terminal to see real-time program logs.
-
-### Validator Logs
-```bash
-tail -f .anchor/test-ledger/validator.log
-```
-
-### Common Issues
-
-**Issue**: "ConstraintSeeds" error
-**Fix**: PDA derivation in test doesn't match program. Check seed order.
-
-**Issue**: "Connection refused"
-**Fix**: Validator not running. Start `anchor localnet` first.
-
-**Issue**: "Program's authority mismatch"
-**Fix**: Clean ledger: `rm -rf .anchor/test-ledger` then restart validator.
-
-## 🔬 Testing Locally
-
-### Run Specific Test
-```bash
-anchor test -- --grep "Complete ANOMI"
-```
-
-### Verbose Output
-```bash
-anchor test -- --reporter spec
-```
-
-### With Program Logs
-Terminal 1:
-```bash
-anchor localnet
-```
-
-Terminal 2:
-```bash
-solana logs
-```
-
-Terminal 3:
-```bash
-anchor test --skip-build --skip-local-validator
-```
-
-## 📊 Performance Metrics
-
-Current test execution:
-- Build time: ~15s (Rust compilation)
-- Deploy time: ~2s (3 programs)
-- Test execution: ~2s (2 tests)
-- Total (cold start): ~19s
-- Total (hot reload): ~2s
-
-## 🚀 Next Steps
-
-### Phase 1: Real ZK Circuit
-```bash
-cd zk-stuff
-wget https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_12.ptau
-./compile_circuit.sh
-```
-Test will automatically use real proofs.
-
-### Phase 2: Production Market
-Replace `programs/market/src/lib.rs` stub with:
-- Real order book data structure
-- Maker/taker matching algorithm
-- Fee calculation and distribution
-- OpenBook V2 integration
-
-### Phase 3: Enhanced OrderProcessor
-- Store verification key on-chain (PDA)
-- Add replay attack prevention
-- Batch proof verification
-- Optimize compute units
-
-### Phase 4: Monitoring & Analytics
-- Add event emission for indexers
-- Track settlement latency
-- Monitor proof validation success rate
-- Order lifecycle analytics
-
-## 📚 Key Files to Study
-
-1. **CPI Pattern**: `programs/market/src/lib.rs` lines 22-36
-2. **PDA Constraints**: `programs/order-store/src/lib.rs` lines 57-63
-3. **ZK Validation**: `programs/order-processor/src/lib.rs` lines 84-106
-4. **Test Setup**: `tests/anomi-zk-prototype.ts` lines 25-33
-
-## 🔐 Security Considerations
-
-- ✅ Invalid proofs rejected
-- ✅ Malformed proofs blocked
-- ⚠️ Verification key not stored on-chain yet
-- ⚠️ No replay attack prevention yet
-- ⚠️ No timeout mechanism for pending orders
-
-## 🎯 Success Criteria Met
-
-- [x] Multi-program architecture working
-- [x] CPIs functioning correctly
-- [x] PDA state management operational
-- [x] ZK proof structure validation
-- [x] End-to-end settlement flow
-- [x] Invalid proof rejection
-- [x] Comprehensive test coverage
-- [x] Documentation complete
+**Key Instructions:**
+- `store_matched_order`
+- `update_order_status`
+- `get_matched_order`
 
 ---
 
-**Happy Building!** 🚀
+### OrderProcessor Program
 
-For questions or issues, create a GitHub issue or refer to the main README.md.
+**Responsibilities:**
+- ZK proof validation (solvency + payment proofs)
+- Settlement orchestration via CPIs
+- Cross-program authorization enforcement
+
+**Settlement Flow:**
+1. Validate ZK payment proof
+2. Update OrderStore (PaymentConfirmed)
+3. Trigger Market Program escrow release
+4. Update OrderStore (Settled)
+
+**Key Instructions:**
+- `finalize_trade`
+- `validate_payment_proof` (internal)
 
 ---
 
-**Built with**: Anchor 0.32.1 | Solana 2.3.13 | Circom 2.0 | Groth16 ZK-SNARKs
+## Security Model
 
+### Escrow Safety
+- Tokens held by PDA with no private key
+- Only OrderProcessor can trigger release
+- Program ID validation prevents unauthorized calls
+
+### ZK Privacy Guarantees
+- Solvency proof: Buyer has funds without revealing account balance
+- Payment proof: Payment sent without revealing transaction details
+- All proofs verified on-chain, generated off-chain
+
+### State Consistency
+- Matched orders persisted before order book updates
+- Status transitions logged for auditability
+- 24-hour expiry prevents indefinite token locks
+
+### Attack Mitigation
+- **Replay attacks**: Proof nonces prevent reuse
+- **Front-running**: ZK proofs bind to specific order IDs
+- **Griefing**: Expiry returns funds to seller after 24h
+- **Unauthorized release**: Permissioned CPI with program ID check
+
+---
+
+## Relationship to OpenBook/Serum
+
+This protocol draws architectural inspiration from OpenBook V2 but is **not an integration or fork**. Key differences:
+
+| Aspect | OpenBook V2 | ZK2P Protocol |
+|--------|-------------|---------------|
+| **Use Case** | High-frequency crypto-to-crypto DEX | Asynchronous fiat-to-crypto P2P |
+| **Settlement** | Immediate (same transaction) | Delayed (hours/days for fiat transfer) |
+| **State Model** | Transient event queue | Persistent matched order PDAs |
+| **Privacy** | Public on-chain data | ZK proofs hide sensitive data |
+| **Custody** | Temporary escrow during match | Extended escrow during fiat transfer |
+
+**What We Borrowed:**
+- Multi-program architecture pattern
+- PDA-based escrow design
+- CPI-driven settlement flow
+
+**What We Built Custom:**
+- ZK proof verification system
+- Persistent OrderStore for asynchronous settlement
+- Permissioned cross-program settlement orchestration
+
+---
+
+## Development Status
+
+**Current Phase:** Phase 0.5 Complete (Token Escrow Foundation)
+
+**Implemented:**
+- Market Program with SPL Token integration
+- Escrow vault PDA system
+- Order placement with token custody
+- Permissioned escrow release mechanism
+
+**Next Steps:**
+- Phase 1: Real ZK Circuit compilation (circom + snarkjs)
+- Phase 2A: Production order book with matching engine
+- Phase 2B: Dual ZK proof validation (solvency + payment)
+- Phase 3: Security hardening and escrow integration
+- Phase 4: User interface development
+- Phase 5: Testing and optimization
+
+**See:** `anomi-zk-prototype/` for implementation details.
 

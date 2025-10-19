@@ -1,7 +1,6 @@
 # Exclude all directories except anomi-zk-prototype
 openbook-v2/
 serum-dex/
-memory-summarizer/
 zk2p/
 
 # Node modules
@@ -19,7 +18,5 @@ target/
 .DS_Store
 Thumbs.db
 
-# Development & Analysis Documents (local reference only)
-anomi-zk-prototype/DEPLOYMENT_READINESS.md
-anomi-zk-prototype/FULL_FLOW_ANALYSIS.md
-anomi-zk-prototype/VISION_VS_IMPLEMENTATION.md
+# Internal documentation (local reference only)
+anomi-zk-prototype/.docs/
