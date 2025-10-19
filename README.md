@@ -1,7 +1,52 @@
 # ZK2P Protocol
 
-A zero-knowledge peer-to-peer settlement protocol for fiat-to-crypto transactions on Solana. The system enables trustless exchange between buyers and sellers using cryptographic proofs to verify off-chain fiat payments without revealing sensitive financial information.
+## Project Setup
 
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/azank1/zk2p.git
+cd zk2p/anomi-zk-prototype
+```
+
+### 2. Install Dependencies
+
+```bash
+# Install Node.js dependencies
+yarn install
+
+# Or using npm
+npm install
+```
+
+### 3. Build the Programs
+
+```bash
+# Build all Anchor programs (Market, OrderStore, OrderProcessor)
+anchor build
+```
+
+This will compile:
+- `programs/market` - Order matching and token escrow
+- `programs/order-store` - Persistent state management
+- `programs/order-processor` - ZK proof validation and settlement
+
+### 4. Generate Program IDL
+
+The build process automatically generates:
+- `target/idl/market.json`
+- `target/idl/order_store.json`
+- `target/idl/order_processor.json`
+
+---
+
+## Running Tests
+
+### Quick Test Run
+
+```bash
+anchor test
+```
 ## Architecture Overview
 
 The protocol implements a multi-program design with clear separation of concerns:
