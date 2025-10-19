@@ -17,4 +17,9 @@ target/
 
 # OS
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Development & Analysis Documents (local reference only)
+anomi-zk-prototype/DEPLOYMENT_READINESS.md
+anomi-zk-prototype/FULL_FLOW_ANALYSIS.md
+anomi-zk-prototype/VISION_VS_IMPLEMENTATION.md
