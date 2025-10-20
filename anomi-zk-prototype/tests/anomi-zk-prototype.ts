@@ -4,7 +4,9 @@ import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
 import { expect } from "chai";
 import BN from "bn.js";
 
-describe("ANOMI ZK Settlement Layer", () => {
+// DEPRECATED: These tests are stubs from Phase 0 and don't work with Phase 2A matching engine
+// Use phase2a-matching.ts instead for real matching tests
+describe.skip("ANOMI ZK Settlement Layer (DEPRECATED - Use Phase 2A tests)", () => {
   // Configure the client to use the local cluster
   anchor.setProvider(anchor.AnchorProvider.env());
   

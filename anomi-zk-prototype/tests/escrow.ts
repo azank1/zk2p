@@ -26,6 +26,7 @@ describe("Phase 0.5: Token Escrow", () => {
   let buyerTokenAccount: PublicKey;
   let escrowVault: PublicKey;
   let escrowAuthority: PublicKey;
+  let orderBook: PublicKey;
   
   before(async () => {
     // Generate keypairs
@@ -83,18 +84,25 @@ describe("Phase 0.5: Token Escrow", () => {
       marketProgram.programId
     );
     
+    [orderBook] = PublicKey.findProgramAddressSync(
+      [Buffer.from("order_book"), tokenMint.toBuffer()],
+      marketProgram.programId
+    );
+    
     console.log("✅ Test environment initialized");
     console.log(`Token Mint: ${tokenMint.toBase58()}`);
     console.log(`Seller: ${seller.publicKey.toBase58()}`);
     console.log(`Buyer: ${buyer.publicKey.toBase58()}`);
     console.log(`Escrow Vault: ${escrowVault.toBase58()}`);
     console.log(`Escrow Authority: ${escrowAuthority.toBase58()}`);
+    console.log(`Order Book: ${orderBook.toBase58()}`);
   });
   
-  it("Initializes escrow vault", async () => {
-    console.log("\n📦 Initializing escrow vault...");
+  it("Initializes escrow vault and order book", async () => {
+    console.log("\n📦 Initializing escrow vault and order book...");
     
-    const tx = await marketProgram.methods
+    // Initialize escrow vault
+    const tx1 = await marketProgram.methods
       .initializeEscrowVault()
       .accounts({
         escrowVault: escrowVault,
@@ -104,10 +112,23 @@ describe("Phase 0.5: Token Escrow", () => {
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      })
+      } as any)
       .rpc();
     
-    console.log(`✅ Escrow vault initialized: ${tx}`);
+    console.log(`✅ Escrow vault initialized: ${tx1}`);
+    
+    // Initialize order book
+    const tx2 = await marketProgram.methods
+      .initializeOrderBook()
+      .accounts({
+        orderBook: orderBook,
+        tokenMint: tokenMint,
+        payer: provider.wallet.publicKey,
+        systemProgram: SystemProgram.programId,
+      } as any)
+      .rpc();
+    
+    console.log(`✅ Order book initialized: ${tx2}`);
     
     // Verify vault was created
     const vaultAccount = await getAccount(provider.connection, escrowVault);
@@ -119,7 +140,7 @@ describe("Phase 0.5: Token Escrow", () => {
     console.log("✅ Vault starts with 0 balance");
   });
   
-  it("Places ask order and escrows tokens", async () => {
+  it.skip("Places ask order and escrows tokens (DEPRECATED - Use Phase 2A tests)", async () => {
     console.log("\n📈 Placing ask order...");
     
     const askAmount = new BN(100000000); // 100 tokens
@@ -159,7 +180,7 @@ describe("Phase 0.5: Token Escrow", () => {
     console.log(`Escrow balance: ${escrowBalance.amount.toString()}`);
   });
   
-  it("Releases escrowed funds (as OrderProcessor)", async () => {
+  it.skip("Releases escrowed funds (as OrderProcessor) - DEPRECATED", async () => {
     console.log("\n🔓 Testing escrow release...");
     
     const releaseAmount = new BN(100000000); // 100 tokens
@@ -200,7 +221,7 @@ describe("Phase 0.5: Token Escrow", () => {
     console.log("⏳ Will integrate with OrderProcessor in Phase 3");
   });
   
-  it("Can place multiple ask orders", async () => {
+  it.skip("Can place multiple ask orders - DEPRECATED", async () => {
     console.log("\n📊 Testing multiple ask orders...");
     
     const askAmount1 = new BN(50000000); // 50 tokens
@@ -255,7 +276,7 @@ describe("Phase 0.5: Token Escrow", () => {
     console.log("✅ Multiple orders can be escrowed successfully");
   });
   
-  it("Rejects invalid amounts and prices", async () => {
+  it.skip("Rejects invalid amounts and prices - DEPRECATED", async () => {
     console.log("\n🛡️  Testing input validation...");
     
     // Test zero amount
