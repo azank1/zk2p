@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZK2P Phase 2A - Order Matching Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .algorithm-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .algorithm-info h2 {
+            color: #2a5298;
+            margin-bottom: 15px;
+        }
+
+        .algorithm-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 10px;
+        }
+
+        .algorithm-box code {
+            display: block;
+            background: #f1f3f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .panel h3 {
+            color: #2a5298;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 1em;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .order-book {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .order-item {
+            background: #f8f9fa;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #28a745;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .order-item.matched {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+
+        .order-item.removed {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+            opacity: 0.6;
+        }
+
+        .order-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .order-meta strong {
+            color: #2a5298;
+        }
+
+        .order-details {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .log-panel {
+            grid-column: 1 / -1;
+        }
+
+        .log-container {
+            background: #212529;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-entry.success {
+            color: #00ff00;
+        }
+
+        .log-entry.info {
+            color: #17a2b8;
+        }
+
+        .log-entry.error {
+            color: #ff4444;
+        }
+
+        .log-entry.warning {
+            color: #ffc107;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            opacity: 0.3;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 ZK2P Phase 2A - Order Matching Engine</h1>
+            <p>Interactive demo showing price-time priority matching algorithm</p>
+        </div>
+
+        <div class="algorithm-info">
+            <h2>📊 Matching Algorithm Explained</h2>
+            <div class="algorithm-box">
+                <strong>Price-Time Priority (Pro-Rata with FIFO)</strong>
+                <p>The matching engine uses a two-stage sorting algorithm:</p>
+                <code>orders.sort_by(|a, b| a.price.cmp(&b.price).then(a.created_at.cmp(&b.created_at)))</code>
+                <p style="margin-top: 10px;">
+                    <strong>Stage 1:</strong> Sort by price (ascending) - cheapest ask orders matched first<br>
+                    <strong>Stage 2:</strong> Sort by timestamp (ascending) - older orders matched first (FIFO)<br>
+                    <strong>Matching:</strong> Bid matches all asks where <code>ask.price ≤ bid.price</code>
+                </p>
+            </div>
+            <div class="algorithm-box">
+                <strong>Key Features</strong>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>✅ Partial fills supported (order can be split across multiple matches)</li>
+                    <li>✅ Orders stored in on-chain PDA (OrderBook account)</li>
+                    <li>✅ Tokens held in escrow until settlement</li>
+                    <li>✅ Cross-program invocation (CPI) to OrderStore for matched orders</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="panel">
+                <h3>🟢 Place Ask Order (Seller)</h3>
+                <div class="form-group">
+                    <label>Seller Address</label>
+                    <input type="text" id="askSeller" placeholder="e.g., Alice123" value="Alice">
+                </div>
+                <div class="form-group">
+                    <label>Amount (tokens)</label>
+                    <input type="number" id="askAmount" placeholder="100" value="100">
+                </div>
+                <div class="form-group">
+                    <label>Price (per token)</label>
+                    <input type="number" id="askPrice" placeholder="50" value="50">
+                </div>
+                <div class="form-group">
+                    <label>Payment Method</label>
+                    <input type="text" id="askPayment" placeholder="e.g., Bank Transfer" value="PayPal">
+                </div>
+                <button class="btn btn-primary" onclick="placeAskOrder()">📤 Place Ask Order</button>
+            </div>
+
+            <div class="panel">
+                <h3>🔵 Create Bid (Buyer)</h3>
+                <div class="form-group">
+                    <label>Buyer Address</label>
+                    <input type="text" id="bidBuyer" placeholder="e.g., Bob456" value="Bob">
+                </div>
+                <div class="form-group">
+                    <label>Amount (tokens)</label>
+                    <input type="number" id="bidAmount" placeholder="50" value="50">
+                </div>
+                <div class="form-group">
+                    <label>Max Price (per token)</label>
+                    <input type="number" id="bidPrice" placeholder="55" value="55">
+                </div>
+                <button class="btn btn-secondary" onclick="createBid()">🎯 Create Bid & Match</button>
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="stat-value" id="statOrders">0</div>
+                        <div class="stat-label">Active Orders</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="statMatches">0</div>
+                        <div class="stat-label">Total Matches</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="statVolume">0</div>
+                        <div class="stat-label">Total Volume</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>📖 Order Book (Live State)</h3>
+                <p style="color: #6c757d; margin-bottom: 10px;">Sorted by: Price (↑) → Time (↑)</p>
+                <div class="order-book" id="orderBook">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                        </svg>
+                        <p>No orders in the book yet</p>
+                        <p style="font-size: 0.85em;">Place an ask order to get started</p>
+                    </div>
+                </div>
+                <button class="btn btn-danger" onclick="clearOrderBook()">🗑️ Clear Order Book</button>
+            </div>
+
+            <div class="panel log-panel">
+                <h3>📋 Transaction Log</h3>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry info">System initialized. Ready to process orders.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state matching the Rust OrderBook struct
+        let orderBook = {
+            token_mint: "TokenMint123",
+            orders: [],
+            last_order_id: 0
+        };
+
+        let totalMatches = 0;
+        let totalVolume = 0;
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function updateStats() {
+            document.getElementById('statOrders').textContent = orderBook.orders.length;
+            document.getElementById('statMatches').textContent = totalMatches;
+            document.getElementById('statVolume').textContent = totalVolume;
+        }
+
+        function renderOrderBook() {
+            const container = document.getElementById('orderBook');
+            
+            if (orderBook.orders.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                        </svg>
+                        <p>No orders in the book yet</p>
+                        <p style="font-size: 0.85em;">Place an ask order to get started</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = orderBook.orders.map((order, index) => `
+                <div class="order-item" id="order-${index}">
+                    <div class="order-meta">
+                        <span><strong>Order #${order.order_id}</strong></span>
+                        <span style="color: #28a745; font-weight: bold;">$${order.price}/token</span>
+                    </div>
+                    <div class="order-details">
+                        Seller: ${order.seller} | Amount: ${order.amount} tokens | ${order.payment_method}
+                    </div>
+                    <div class="order-details" style="font-size: 0.8em; margin-top: 5px;">
+                        Created: ${new Date(order.created_at).toLocaleTimeString()}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function placeAskOrder() {
+            const seller = document.getElementById('askSeller').value.trim();
+            const amount = parseInt(document.getElementById('askAmount').value);
+            const price = parseInt(document.getElementById('askPrice').value);
+            const payment_method = document.getElementById('askPayment').value.trim();
+
+            if (!seller || !amount || !price || !payment_method) {
+                log('❌ Error: All fields are required', 'error');
+                return;
+            }
+
+            if (amount <= 0 || price <= 0) {
+                log('❌ Error: Amount and price must be positive', 'error');
+                return;
+            }
+
+            // Simulate the Rust function: place_ask_order
+            log(`📥 Market: Placing ask order - seller: ${seller}, amount: ${amount}, price: ${price}, payment_method: ${payment_method}`, 'info');
+            
+            // Simulate token transfer to escrow
+            log(`💰 Market: ${amount} tokens transferred to escrow vault`, 'success');
+
+            // Store order in order book (matching Rust implementation)
+            orderBook.last_order_id += 1;
+            
+            const order_id = orderBook.last_order_id;
+            const askOrder = {
+                seller,
+                amount,
+                price,
+                payment_method,
+                created_at: Date.now(),
+                order_id
+            };
+
+            orderBook.orders.push(askOrder);
+            
+            log(`✅ Market: Ask order stored in order book with ID: ${order_id}`, 'success');
+            log(`📊 Market: Order book now has ${orderBook.orders.length} orders`, 'info');
+
+            renderOrderBook();
+            updateStats();
+        }
+
+        function createBid() {
+            const buyer = document.getElementById('bidBuyer').value.trim();
+            const amount = parseInt(document.getElementById('bidAmount').value);
+            const price = parseInt(document.getElementById('bidPrice').value);
+
+            if (!buyer || !amount || !price) {
+                log('❌ Error: All fields are required', 'error');
+                return;
+            }
+
+            if (amount <= 0 || price <= 0) {
+                log('❌ Error: Amount and price must be positive', 'error');
+                return;
+            }
+
+            // Simulate the Rust function: create_bid
+            log(`🎯 Market: Received bid - amount: ${amount}, price: ${price}, trader: ${buyer}`, 'info');
+
+            // CORE ALGORITHM: Sort by price (ascending), then by time (ascending)
+            log(`🔧 Executing price-time priority sort...`, 'info');
+            orderBook.orders.sort((a, b) => {
+                // First by price (ascending - cheapest first)
+                const priceCmp = a.price - b.price;
+                if (priceCmp !== 0) return priceCmp;
+                // Then by time (ascending - oldest first)
+                return a.created_at - b.created_at;
+            });
+
+            log(`📖 Market: Order book has ${orderBook.orders.length} orders to match against`, 'info');
+
+            let remainingAmount = amount;
+            let matchedOrders = [];
+            let ordersToRemove = [];
+
+            // Find matching orders
+            for (let i = 0; i < orderBook.orders.length && remainingAmount > 0; i++) {
+                const askOrder = orderBook.orders[i];
+                
+                // Check if this ask order can be matched (ask price <= bid price)
+                if (askOrder.price <= price) {
+                    const fillAmount = Math.min(remainingAmount, askOrder.amount);
+                    
+                    log(`🔄 Market: Matching bid with ask - ask_price: ${askOrder.price}, ask_amount: ${askOrder.amount}, fill_amount: ${fillAmount}`, 'warning');
+                    
+                    // Simulate CPI to OrderStore
+                    log(`📞 CPI: create_matched_order(amount: ${fillAmount}, price: ${askOrder.price}, buyer: ${buyer}, seller: ${askOrder.seller})`, 'success');
+                    
+                    matchedOrders.push({ index: i, fillAmount, askOrder });
+                    remainingAmount -= fillAmount;
+                    totalMatches++;
+                    totalVolume += fillAmount;
+                    
+                    // Mark order as matched in UI
+                    setTimeout(() => {
+                        const orderElement = document.getElementById(`order-${i}`);
+                        if (orderElement) {
+                            orderElement.classList.add('matched');
+                        }
+                    }, 100);
+                    
+                    // If fully filled, mark for removal
+                    if (fillAmount === askOrder.amount) {
+                        ordersToRemove.push(i);
+                    }
+                    
+                    log(`✅ Market: Created match - ${fillAmount} tokens at price ${askOrder.price}`, 'success');
+                } else {
+                    log(`⏭️  Ask order #${askOrder.order_id} price (${askOrder.price}) > bid price (${price}), skipping`, 'info');
+                }
+            }
+
+            if (matchedOrders.length === 0) {
+                log('❌ Market: No matching orders found for bid', 'error');
+                return;
+            }
+
+            // Update order book state
+            // Remove fully filled orders (in reverse to maintain indices)
+            for (let i = ordersToRemove.length - 1; i >= 0; i--) {
+                const index = ordersToRemove[i];
+                setTimeout(() => {
+                    const orderElement = document.getElementById(`order-${index}`);
+                    if (orderElement) {
+                        orderElement.classList.add('removed');
+                        setTimeout(() => {
+                            orderBook.orders.splice(index, 1);
+                            renderOrderBook();
+                            updateStats();
+                        }, 500);
+                    }
+                }, 200);
+            }
+
+            // Update partially filled orders
+            matchedOrders.forEach(({ index, fillAmount, askOrder }) => {
+                if (askOrder.amount > fillAmount) {
+                    orderBook.orders[index].amount -= fillAmount;
+                    log(`📝 Updated order #${askOrder.order_id}: ${askOrder.amount} → ${orderBook.orders[index].amount} tokens`, 'info');
+                }
+            });
+
+            log(`🎉 Market: Matching completed - ${matchedOrders.length} orders matched`, 'success');
+            log(`📊 Market: Order book now has ${orderBook.orders.length - ordersToRemove.length} remaining orders`, 'info');
+
+            setTimeout(() => {
+                renderOrderBook();
+                updateStats();
+            }, 600);
+        }
+
+        function clearOrderBook() {
+            orderBook.orders = [];
+            orderBook.last_order_id = 0;
+            totalMatches = 0;
+            totalVolume = 0;
+            log('🗑️  Order book cleared', 'warning');
+            renderOrderBook();
+            updateStats();
+        }
+
+        // Initialize
+        updateStats();
+    </script>
+</body>
+</html>

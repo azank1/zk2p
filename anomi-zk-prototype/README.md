@@ -2,6 +2,18 @@
 
 Zero-knowledge peer-to-peer settlement with production matching engine.
 
+## 🎮 Interactive Demo
+
+**See the matching algorithm in action!**
+
+```bash
+cd demo-ui
+python3 -m http.server 8080
+# Visit: http://localhost:8080
+```
+
+The demo visualizes the exact price-time priority algorithm from the Rust contract. Place ask orders, submit bids, and watch real-time matching with partial fills.
+
 ## Quick Start
 
 ```bash
