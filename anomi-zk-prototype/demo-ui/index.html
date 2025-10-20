@@ -290,6 +290,54 @@
             opacity: 0.3;
             margin-bottom: 10px;
         }
+
+        .test-instructions {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 30px;
+            border-radius: 8px;
+        }
+
+        .test-instructions h3 {
+            color: #856404;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .test-instructions code {
+            background: #212529;
+            color: #00ff00;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .test-instructions pre {
+            background: #212529;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+
+        .test-instructions ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        .test-instructions li {
+            margin-bottom: 8px;
+        }
+
+        .test-instructions strong {
+            color: #856404;
+        }
     </style>
 </head>
 <body>
@@ -320,6 +368,41 @@
                     <li>✅ Cross-program invocation (CPI) to OrderStore for matched orders</li>
                 </ul>
             </div>
+        </div>
+
+        <div class="test-instructions">
+            <h3>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+                🧪 How to Run On-Chain Tests
+            </h3>
+            <p>This UI simulates the algorithm. To verify it works on Solana blockchain:</p>
+            
+            <p style="margin-top: 15px;"><strong>1. Install dependencies:</strong></p>
+            <pre>cd /path/to/anomi-zk-prototype
+yarn install</pre>
+
+            <p><strong>2. Build the programs:</strong></p>
+            <pre>anchor build</pre>
+
+            <p><strong>3. Run the test suite:</strong></p>
+            <pre>anchor test</pre>
+
+            <p><strong>Expected Output:</strong></p>
+            <ul>
+                <li>✅ <strong>5 passing</strong> tests in ~10 seconds</li>
+                <li>🟢 Escrow vault and order book initialization</li>
+                <li>🟢 Ask order placement with token custody</li>
+                <li>🟢 <strong>Bid matching with real seller</strong> (proves Phase 2A works!)</li>
+                <li>🟢 Order book state updates (partial fills)</li>
+                <li>🟢 Validation (rejects non-matching bids)</li>
+            </ul>
+
+            <p style="margin-top: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #28a745;">
+                <strong>✨ What This Proves:</strong> The matching algorithm you see in this UI is <strong>identical</strong> 
+                to the Rust code running on-chain. Tests verify real P2P matching, token custody, and partial fills.
+            </p>
         </div>
 
         <div class="main-content">
