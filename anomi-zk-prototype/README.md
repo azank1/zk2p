@@ -1,52 +1,49 @@
-# ZK2P Protocol - Anomi Prototype
+# ZK2P Protocol - Phase 2A
 
-## First-Time Setup
+Zero-knowledge peer-to-peer settlement with production matching engine.
+
+## Quick Start
 
 ```bash
-# 1. Install dependencies
 yarn install
-
-# 2. Build programs
 anchor build
-
-# 3. Run tests
 anchor test
 ```
 
-## Phase 2A: Production Matching Engine
+## Test Results
 
-### What's New
-
-Phase 2A implements a **real order book with matching engine**, replacing the stubbed instant-match system:
-
-- ✅ Order book storage in PDAs
-- ✅ Price-time priority matching algorithm
-- ✅ Multi-seller P2P marketplace
-- ✅ Partial order fills support
-
-### Run Phase 2A Tests
-
-```bash
-# Run all tests (recommended)
-anchor test
-
-# Or run only Phase 2A matching tests
-anchor test -- --grep "Phase 2A"
+```
+5 passing (10s)
+  ✔ Escrow vault and order book initialization
+  ✔ Ask order placement with token custody
+  ✔ Bid matching with real seller (partial fills)
+  ✔ Order book state updates
+  ✔ Validation (rejects non-matching bids)
 ```
 
-### What the Tests Prove
+## Phase 2A Features
 
-**Test File**: `tests/phase2a-matching.ts`
+- **Order Book**: On-chain PDA storage with price-time priority
+- **Matching Engine**: Bid orders match against real ask orders
+- **Partial Fills**: Orders can be partially matched
+- **Token Custody**: SPL tokens held in escrow during trading
+- **Multi-Seller**: True P2P marketplace (not stub)
 
-1. ✅ Order book initialization
-2. ✅ Ask orders stored in order book (not just logged)
-3. ✅ **CORE**: Bid matches real seller from order book
-4. ✅ Partial fills and order book updates work
+## Architecture
 
-**Before Phase 2A**: Matching was stubbed (same trader both sides)
-**After Phase 2A**: Real matching with actual sellers from order book
+```
+Seller → place_ask_order() → Tokens to Escrow → Order Book
+Buyer → create_bid() → Match from Order Book → CPI to OrderStore
+OrderProcessor → finalize_trade(zk_proof) → Release Escrow
+```
 
-### Expected Output
+## Programs
+
+- **Market**: Order book + escrow + matching
+- **OrderStore**: Persistent matched order state
+- **OrderProcessor**: ZK-gated settlement
+
+See main [README](../README.md) for protocol details.
 
 ```
 Phase 2A: Matching Engine

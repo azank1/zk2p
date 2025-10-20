@@ -16,7 +16,7 @@ describe("Phase 0.5: Token Escrow", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   
   const provider = anchor.AnchorProvider.env();
-  const marketProgram = anchor.workspace.Market as Program<any>;
+  const marketProgram = anchor.workspace.Market as Program;
   
   // Test accounts
   let tokenMint: PublicKey;
