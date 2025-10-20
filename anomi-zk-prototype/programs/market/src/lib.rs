@@ -5,6 +5,17 @@ use anchor_spl::token_interface::{TokenAccount, Mint};
 declare_id!("7eAHPRbhqzsqpC1Wuw2Y8AqRGGqGcEGAXAGmfsovfLae");
 
 // ============================================================================
+// Phase 2B: Order Management Modules
+// ============================================================================
+pub mod critbit;
+pub mod order;
+pub mod order_book;
+
+use critbit::CritBitTree;
+use order::{Order, OrderQueue, OrderType, Side, generate_order_id};
+use order_book::OrderBook as OrderBookV2;
+
+// ============================================================================
 // Data Structures for Order Book
 // ============================================================================
 
