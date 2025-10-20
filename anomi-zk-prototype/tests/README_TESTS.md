@@ -41,8 +41,7 @@ The `phase2a-matching.ts` test proves:
 
 ### Test 3 is the CORE proof
 
-This test demonstrates:
-- ❌ **OLD (Phase 0.5)**: `create_bid` created stub match with same trader both sides
+
 - ✅ **NEW (Phase 2A)**: `create_bid` actually searches order book and matches real seller
 
 ### Expected Output
