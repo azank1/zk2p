@@ -395,21 +395,26 @@ This protocol draws architectural inspiration from OpenBook V2 but is **not an i
 
 ## Development Status
 
-**Current Phase:** Phase 0.5 Complete (Token Escrow Foundation)
+**Current Phase:** Phase 2A Complete (Production Order Book & Matching Engine)
 
 **Implemented:**
 - Market Program with SPL Token integration
 - Escrow vault PDA system
+- **Production order book with persistent storage** ✅ NEW
+- **Price-time priority matching algorithm** ✅ NEW
+- **Multi-seller P2P marketplace functionality** ✅ NEW
+- **Partial order fills support** ✅ NEW
 - Order placement with token custody
 - Permissioned escrow release mechanism
 
 **Next Steps:**
 - Phase 1: Real ZK Circuit compilation (circom + snarkjs)
-- Phase 2A: Production order book with matching engine
 - Phase 2B: Dual ZK proof validation (solvency + payment)
 - Phase 3: Security hardening and escrow integration
 - Phase 4: User interface development
 - Phase 5: Testing and optimization
 
 **See:** `anomi-zk-prototype/` for implementation details.
+
+**Documentation:** Phase 2A implementation details and test results are available in local `docs/` directory (git-ignored).
 

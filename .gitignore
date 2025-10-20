@@ -2,6 +2,7 @@
 openbook-v2/
 serum-dex/
 zk2p/
+.docs/
 
 # Node modules
 node_modules/
@@ -19,4 +20,11 @@ target/
 Thumbs.db
 
 # Internal documentation (local reference only)
+docs/
 anomi-zk-prototype/.docs/
+anomi-zk-prototype/docs/
+
+# Solana testing artifacts
+test-ledger/
+.solana-test-ledger/
+.anchor/
