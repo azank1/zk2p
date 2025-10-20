@@ -75,41 +75,43 @@
 
         .main-content {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 2fr;
             gap: 20px;
             padding: 30px;
         }
 
         .panel {
             background: #f8f9fa;
-            padding: 20px;
+            padding: 15px;
             border-radius: 8px;
         }
 
         .panel h3 {
             color: #2a5298;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
+            font-size: 1.1em;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
             font-weight: 600;
             color: #495057;
+            font-size: 0.85em;
         }
 
         .form-group input {
             width: 100%;
-            padding: 10px;
+            padding: 8px;
             border: 2px solid #dee2e6;
             border-radius: 6px;
-            font-size: 1em;
+            font-size: 0.9em;
         }
 
         .form-group input:focus {
@@ -119,10 +121,10 @@
 
         .btn {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             border: none;
             border-radius: 6px;
-            font-size: 1em;
+            font-size: 0.9em;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -162,8 +164,8 @@
             background: white;
             border-radius: 8px;
             padding: 15px;
-            margin-top: 15px;
-            max-height: 400px;
+            margin-top: 10px;
+            max-height: 500px;
             overflow-y: auto;
         }
 
@@ -253,27 +255,27 @@
         .stats {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-top: 15px;
+            gap: 10px;
+            margin-top: 10px;
         }
 
         .stat-box {
             background: white;
-            padding: 15px;
+            padding: 10px;
             border-radius: 8px;
             text-align: center;
         }
 
         .stat-value {
-            font-size: 2em;
+            font-size: 1.5em;
             font-weight: bold;
             color: #667eea;
         }
 
         .stat-label {
-            font-size: 0.9em;
+            font-size: 0.75em;
             color: #6c757d;
-            margin-top: 5px;
+            margin-top: 3px;
         }
 
         .empty-state {
@@ -321,61 +323,69 @@
         </div>
 
         <div class="main-content">
-            <div class="panel">
-                <h3>🟢 Place Ask Order (Seller)</h3>
-                <div class="form-group">
-                    <label>Seller Address</label>
-                    <input type="text" id="askSeller" placeholder="e.g., Alice123" value="Alice">
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div class="panel">
+                    <h3>🟢 Place Ask Order (Seller)</h3>
+                    <div class="form-group">
+                        <label>Seller</label>
+                        <input type="text" id="askSeller" placeholder="Alice" value="Alice">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div class="form-group">
+                            <label>Amount</label>
+                            <input type="number" id="askAmount" placeholder="100" value="100">
+                        </div>
+                        <div class="form-group">
+                            <label>Price</label>
+                            <input type="number" id="askPrice" placeholder="50" value="50">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Payment</label>
+                        <input type="text" id="askPayment" placeholder="PayPal" value="PayPal">
+                    </div>
+                    <button class="btn btn-primary" onclick="placeAskOrder()">📤 Place Ask Order</button>
                 </div>
-                <div class="form-group">
-                    <label>Amount (tokens)</label>
-                    <input type="number" id="askAmount" placeholder="100" value="100">
-                </div>
-                <div class="form-group">
-                    <label>Price (per token)</label>
-                    <input type="number" id="askPrice" placeholder="50" value="50">
-                </div>
-                <div class="form-group">
-                    <label>Payment Method</label>
-                    <input type="text" id="askPayment" placeholder="e.g., Bank Transfer" value="PayPal">
-                </div>
-                <button class="btn btn-primary" onclick="placeAskOrder()">📤 Place Ask Order</button>
-            </div>
 
-            <div class="panel">
-                <h3>🔵 Create Bid (Buyer)</h3>
-                <div class="form-group">
-                    <label>Buyer Address</label>
-                    <input type="text" id="bidBuyer" placeholder="e.g., Bob456" value="Bob">
-                </div>
-                <div class="form-group">
-                    <label>Amount (tokens)</label>
-                    <input type="number" id="bidAmount" placeholder="50" value="50">
-                </div>
-                <div class="form-group">
-                    <label>Max Price (per token)</label>
-                    <input type="number" id="bidPrice" placeholder="55" value="55">
-                </div>
-                <button class="btn btn-secondary" onclick="createBid()">🎯 Create Bid & Match</button>
-                <div class="stats">
-                    <div class="stat-box">
-                        <div class="stat-value" id="statOrders">0</div>
-                        <div class="stat-label">Active Orders</div>
+                <div class="panel">
+                    <h3>🔵 Create Bid (Buyer)</h3>
+                    <div class="form-group">
+                        <label>Buyer</label>
+                        <input type="text" id="bidBuyer" placeholder="Bob" value="Bob">
                     </div>
-                    <div class="stat-box">
-                        <div class="stat-value" id="statMatches">0</div>
-                        <div class="stat-label">Total Matches</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div class="form-group">
+                            <label>Amount</label>
+                            <input type="number" id="bidAmount" placeholder="50" value="50">
+                        </div>
+                        <div class="form-group">
+                            <label>Max Price</label>
+                            <input type="number" id="bidPrice" placeholder="55" value="55">
+                        </div>
                     </div>
-                    <div class="stat-box">
-                        <div class="stat-value" id="statVolume">0</div>
-                        <div class="stat-label">Total Volume</div>
+                    <button class="btn btn-secondary" onclick="createBid()">🎯 Create Bid & Match</button>
+                    <div class="stats">
+                        <div class="stat-box">
+                            <div class="stat-value" id="statOrders">0</div>
+                            <div class="stat-label">Orders</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="statMatches">0</div>
+                            <div class="stat-label">Matches</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="statVolume">0</div>
+                            <div class="stat-label">Volume</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="panel">
                 <h3>📖 Order Book (Live State)</h3>
-                <p style="color: #6c757d; margin-bottom: 10px;">Sorted by: Price (↑) → Time (↑)</p>
+                <p style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
+                    <strong>Sorted by:</strong> Price (↑) → Time (↑)
+                </p>
                 <div class="order-book" id="orderBook">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="currentColor">
