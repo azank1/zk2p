@@ -200,6 +200,98 @@ impl OrderBook {
         }
         Some((self.best_bid + self.best_ask) / 2)
     }
+    
+    /// Match an order against the book (multi-order matching)
+    /// Returns vector of (price, fill_quantity, order_id) tuples
+    pub fn match_order(
+        &mut self,
+        side: Side,
+        max_quantity: u64,
+        limit_price: u64,
+        taker_owner: Pubkey,
+    ) -> Result<Vec<(u64, u64, u128)>> {
+        let mut fills = Vec::new();
+        let mut remaining_quantity = max_quantity;
+        
+        // Keep matching until filled or no compatible orders
+        while remaining_quantity > 0 {
+            // Get best price from opposing side (get value, not reference)
+            let best_price_result = match side {
+                Side::Bid => self.asks.min(),  // Best ask (lowest price)
+                Side::Ask => self.bids.max(),  // Best bid (highest price)
+            };
+            
+            if best_price_result.is_none() {
+                break;  // No more orders on opposing side
+            }
+            
+            let (price, queue_index) = best_price_result.unwrap();
+            
+            // Check if price is acceptable
+            let price_acceptable = match side {
+                Side::Bid => price <= limit_price,  // Buy: ask price must be <= limit
+                Side::Ask => price >= limit_price,  // Sell: bid price must be >= limit
+            };
+            
+            if !price_acceptable {
+                break;  // No more acceptable prices
+            }
+            
+            // Get order queue at this price level
+            let queue = &mut self.order_queues[queue_index as usize];
+            
+            // Match against first order in queue (FIFO)
+            if let Some(maker_order) = queue.peek_mut() {
+                // Self-trade prevention
+                if maker_order.owner == taker_owner {
+                    msg!("Skipping self-trade: order_id={}", maker_order.order_id);
+                    break;  // Don't match against own orders
+                }
+                
+                let fill_quantity = remaining_quantity.min(maker_order.quantity);
+                
+                // Record fill
+                fills.push((price, fill_quantity, maker_order.order_id));
+                
+                // Update maker order
+                maker_order.fill(fill_quantity);
+                remaining_quantity -= fill_quantity;
+                
+                // If maker order fully filled, remove it
+                if maker_order.is_filled() {
+                    queue.pop_if_filled();
+                    
+                    // If queue now empty, remove price level from tree
+                    if queue.is_empty() {
+                        let tree_to_remove = match side {
+                            Side::Bid => &mut self.asks,
+                            Side::Ask => &mut self.bids,
+                        };
+                        tree_to_remove.remove(price)?;
+                    }
+                }
+            } else {
+                break;  // Queue unexpectedly empty
+            }
+        }
+        
+        self.total_orders = self.order_queues
+            .iter()
+            .map(|q| q.orders.len() as u64)
+            .sum();
+        
+        self.update_best_prices()?;
+        
+        Ok(fills)
+    }
+    
+    /// Check if matching would result in self-trade
+    pub fn would_self_trade(&self, side: Side, owner: &Pubkey) -> bool {
+        if let Some(best_order) = self.get_best_order(side.opposite()) {
+            return best_order.owner == *owner;
+        }
+        false
+    }
 }
 
 #[error_code]

@@ -202,6 +202,78 @@ pub mod market {
         
         Ok(())
     }
+
+    /// Match an order with advanced order type handling
+    pub fn match_order(
+        ctx: Context<MatchOrder>,
+        side: Side,
+        quantity: u64,
+        limit_price: u64,
+        order_type: OrderType,
+    ) -> Result<Vec<(u64, u64, u128)>> {
+        require!(quantity > 0, ErrorCode::InvalidAmount);
+        require!(limit_price > 0, ErrorCode::InvalidPrice);
+        
+        let order_book = &mut ctx.accounts.order_book;
+        let taker_owner = ctx.accounts.owner.key();
+        
+        msg!(
+            "Market: Matching order - side: {:?}, qty: {}, limit: {}, type: {:?}",
+            side,
+            quantity,
+            limit_price,
+            order_type
+        );
+        
+        // Check for self-trade before matching
+        if order_book.would_self_trade(side, &taker_owner) {
+            msg!("Market: Self-trade detected, rejecting order");
+            return Err(ErrorCode::SelfTradeNotAllowed.into());
+        }
+        
+        // Execute matching
+        let fills = order_book.match_order(side, quantity, limit_price, taker_owner)?;
+        
+        // Handle order type-specific logic
+        match order_type {
+            OrderType::Limit => {
+                // If not fully filled, add remaining as limit order
+                let filled_quantity: u64 = fills.iter().map(|(_, qty, _)| qty).sum();
+                if filled_quantity < quantity {
+                    msg!("Market: Limit order partially filled ({}/{})", filled_quantity, quantity);
+                }
+            },
+            OrderType::Market => {
+                // Market order: accept any fill amount
+                let filled_quantity: u64 = fills.iter().map(|(_, qty, _)| qty).sum();
+                msg!("Market: Market order filled {}/{}", filled_quantity, quantity);
+            },
+            OrderType::PostOnly => {
+                // Post-only: reject if would match immediately
+                if !fills.is_empty() {
+                    msg!("Market: Post-only order would match immediately, rejecting");
+                    return Err(ErrorCode::PostOnlyWouldMatch.into());
+                }
+            },
+            OrderType::ImmediateOrCancel => {
+                // IOC: fill what's possible, cancel rest (no resting order)
+                let filled_quantity: u64 = fills.iter().map(|(_, qty, _)| qty).sum();
+                msg!("Market: IOC filled {}/{}, canceling remainder", filled_quantity, quantity);
+            },
+            OrderType::FillOrKill => {
+                // FOK: must fill completely or reject entirely
+                let filled_quantity: u64 = fills.iter().map(|(_, qty, _)| qty).sum();
+                if filled_quantity < quantity {
+                    msg!("Market: FOK order cannot be fully filled, rejecting");
+                    return Err(ErrorCode::FillOrKillNotFilled.into());
+                }
+            },
+        }
+        
+        msg!("Market: Matched {} orders, total fills: {}", fills.len(), fills.iter().map(|(_, qty, _)| qty).sum::<u64>());
+        
+        Ok(fills)
+    }
 }
 
 // ============================================================================
@@ -369,6 +441,23 @@ pub struct CancelOrder<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct MatchOrder<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"order_book", token_mint.key().as_ref()],
+        bump,
+    )]
+    pub order_book: Account<'info, OrderBook>,
+
+    pub token_mint: InterfaceAccount<'info, Mint>,
+
+    pub system_program: Program<'info, System>,
+}
+
 // ============================================================================
 // Error Codes
 // ============================================================================
@@ -401,4 +490,13 @@ pub enum ErrorCode {
 
     #[msg("Unauthorized cancellation - only order owner can cancel")]
     UnauthorizedCancellation,
+
+    #[msg("Self-trade not allowed")]
+    SelfTradeNotAllowed,
+
+    #[msg("Post-only order would match immediately")]
+    PostOnlyWouldMatch,
+
+    #[msg("Fill-or-kill order cannot be fully filled")]
+    FillOrKillNotFilled,
 }

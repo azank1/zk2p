@@ -244,20 +244,44 @@ anchor test -- --grep "Phase 2A"
    - Updated PDA seeds from `order_book_v2` to `order_book`
    - All tests migrated to new system
 
-### Next Milestone 7: Phase 2C - Advanced Matching
-1. **Multi-Order Matching**
-   - Match multiple orders in single transaction
-   - Implement all 5 order types
-   - Self-trade prevention
+### Milestone 7: Phase 2C - Advanced Matching (COMPLETE)
+1. **Multi-Order Matching Engine**
+   - `match_order` function in OrderBook
+   - Matches multiple orders in single iteration
+   - Continues until quantity filled or no compatible orders
+   - Automatic tree cleanup for empty price levels
+
+2. **All 5 Order Types Implemented**
+   - **Limit**: Partial fills allowed, resting order if not fully filled
+   - **Market**: Executes at best available price, any fill amount
+   - **Post-Only**: Rejects if would match immediately (maker-only)
+   - **IOC** (Immediate-or-Cancel): Fills immediately, cancels remainder
+   - **FOK** (Fill-or-Kill): Must fill completely or rejects entirely
+
+3. **Self-Trade Prevention**
+   - `would_self_trade` check before matching
+   - Skips orders from same owner
+   - SelfTradeNotAllowed error code
+
+4. **Error Codes Added**
+   - `SelfTradeNotAllowed`
+   - `PostOnlyWouldMatch`
+   - `FillOrKillNotFilled`
+
+### Next Milestone 8: Phase 2D - Event Queue
+1. **Event Queue Implementation**
+   - Ring buffer for fill events
+   - Crank mechanism
+   - TypeScript consumer
 
 ---
 
 **Status Summary:**
 - ✅ Phase 2A: Complete (Removed, migrated to OrderBook)
-- ✅ Milestones 1-6: Complete (Architecture, CritBit, Order, OrderBook, Visualization, Cancel, Migration)
-- ⏳ Milestones 7-9: Roadmap defined, ready to implement
+- ✅ Milestones 1-7: Complete (Architecture, CritBit, Order, OrderBook, UI, Cancel, Migration, Advanced Matching)
+- ⏳ Milestones 8-9: Roadmap defined, ready to implement
 - ⏳ Phase 3: ZK circuits planned, not started
 
-**Current Achievement:** Unified OrderBook system with CritBit trees, full order lifecycle
-**Test Coverage:** 17 passing tests (11 unit + 6 integration)
+**Current Achievement:** Production-ready matching engine with all order types and self-trade prevention
+**Test Coverage:** 11 unit tests passing
 **Demo:** Full DEX interface with real-time tree visualization
