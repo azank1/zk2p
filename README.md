@@ -42,11 +42,38 @@ The build process automatically generates:
 
 ## Running Tests
 
-### Quick Test Run
+### Current Test Suite (Phase 2B Implementation)
 
+**Unit Tests (Isolated Components):**
 ```bash
+# Test Order structure and lifecycle
+cargo test --package market --lib order::tests
+
+# Test OrderBook with CritBit tree operations  
+cargo test --package market --lib order_book::tests
+
+# Test CritBit tree data structure
+cargo test --package market --lib critbit::tests
+```
+
+**Integration Tests (Full Workflows):**
+```bash
+# Test Phase 2A matching engine (legacy)
+anchor test -- --grep "Phase 2A"
+
+# Test Phase 2B OrderBookV2 integration (new)
+anchor test -- --grep "Phase 2B"
+
+# Run all tests
 anchor test
 ```
+
+**What Each Test Validates:**
+- **Order Tests**: Unique ID generation, partial fills, FIFO queues
+- **OrderBook Tests**: CritBit tree insert/remove, best price queries
+- **CritBit Tests**: Tree traversal, min/max operations, bit-pattern routing
+- **Phase 2A Tests**: Legacy matching engine with Vec<AskOrder>
+- **Phase 2B Tests**: New OrderBookV2 with CritBit trees and Order structs
 ## Architecture Overview
 
 The protocol implements a multi-program design with clear separation of concerns:
@@ -395,26 +422,31 @@ This protocol draws architectural inspiration from OpenBook V2 but is **not an i
 
 ## Development Status
 
-**Current Phase:** Phase 2A Complete (Production Order Book & Matching Engine)
+**Current Phase:** Phase 2B Implementation (Milestone 4 - OrderBookV2 Integration)
 
-**Implemented:**
-- Market Program with SPL Token integration
-- Escrow vault PDA system
-- **Production order book with persistent storage** ✅ NEW
-- **Price-time priority matching algorithm** ✅ NEW
-- **Multi-seller P2P marketplace functionality** ✅ NEW
-- **Partial order fills support** ✅ NEW
-- Order placement with token custody
-- Permissioned escrow release mechanism
+**Completed Milestones:**
+- ✅ **Milestone 1**: Architecture documentation and PDA analysis
+- ✅ **Milestone 2**: CritBit tree implementation with visual explorer
+- ✅ **Milestone 3**: Order structure validation (7/7 tests passing)
 
-**Next Steps:**
-- Phase 1: Real ZK Circuit compilation (circom + snarkjs)
-- Phase 2B: Dual ZK proof validation (solvency + payment)
-- Phase 3: Security hardening and escrow integration
-- Phase 4: User interface development
-- Phase 5: Testing and optimization
+**Currently Implementing:**
+- 🔄 **Milestone 4**: OrderBookV2 side-by-side integration with Phase 2A
+- ⏳ **Milestone 5**: Cancel order functionality
+- ⏳ **Milestone 6**: Complete migration from Phase 2A to Phase 2B
+- ⏳ **Milestone 7**: Multi-order matching and order types
+- ⏳ **Milestone 8**: Event queue and crank mechanism
+- ⏳ **Milestone 9**: Fee structure and production features
 
-**See:** `anomi-zk-prototype/` for implementation details.
+**Architecture Highlights:**
+- **Dual Order Book System**: Phase 2A (Vec<AskOrder>) + Phase 2B (CritBit + Order)
+- **Educational Approach**: Each component testable in isolation
+- **Production-Ready**: OrderBookV2 supports 50 price levels, O(log n) operations
+- **ZK-Ready**: Order structure designed for future ZK proof integration
 
-**Documentation:** Phase 2A implementation details and test results are available in local `docs/` directory (git-ignored).
+**Test Coverage:**
+- **Unit Tests**: Order, OrderBook, CritBit (10/10 passing)
+- **Integration Tests**: Phase 2A matching, Phase 2B OrderBookV2
+- **Educational Tools**: CritBit explorer, PDA analyzer
+
+**See:** `workflow_ANOMI.md` for complete roadmap and `docs/architecture/` for technical details.
 

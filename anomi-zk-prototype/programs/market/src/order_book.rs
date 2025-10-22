@@ -35,7 +35,9 @@ pub struct OrderBook {
 
 impl OrderBook {
     /// Maximum number of price levels supported
-    pub const MAX_PRICE_LEVELS: usize = 1000;
+    /// Note: Reduced from 1000 to fit Solana's 10KB PDA limit
+    /// This still supports 50 different price levels, much better than Phase 2A's 10 total orders
+    pub const MAX_PRICE_LEVELS: usize = 50;
     
     /// Initialize a new order book
     pub fn new(market: Pubkey, base_mint: Pubkey, quote_mint: Pubkey) -> Self {
@@ -132,7 +134,7 @@ impl OrderBook {
             Side::Ask => &self.asks,
         };
         
-        let (price, queue_index) = match side {
+        let (_price, queue_index) = match side {
             Side::Bid => tree.max()?, // Highest bid
             Side::Ask => tree.min()?, // Lowest ask
         };
@@ -147,7 +149,7 @@ impl OrderBook {
             Side::Ask => &self.asks,
         };
         
-        let (price, queue_index) = match side {
+        let (_price, queue_index) = match side {
             Side::Bid => tree.max()?, // Highest bid
             Side::Ask => tree.min()?, // Lowest ask
         };
@@ -163,7 +165,7 @@ impl OrderBook {
     }
     
     /// Get order book depth for a side
-    pub fn get_depth(&self, side: Side, levels: usize) -> Vec<(u64, u64)> {
+    pub fn get_depth(&self, side: Side, _levels: usize) -> Vec<(u64, u64)> {
         let tree = match side {
             Side::Bid => &self.bids,
             Side::Ask => &self.asks,

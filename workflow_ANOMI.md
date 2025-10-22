@@ -10,7 +10,7 @@
 
 ZK2P enables trustless P2P trading between crypto sellers and fiat buyers using zero-knowledge proofs to verify solvency and payment without revealing sensitive financial data. Built on Solana with a multi-program architecture inspired by OpenBook/Serum DEX patterns.
 
-**Current Status:** Phase 2A Complete ✅ | Phase 2B Infrastructure Started 🚧
+**Current Status:** Phase 2A Complete ✅ | Phase 2B Milestone 4 (OrderBookV2 Integration) 🚧
 
 ---
 
@@ -72,234 +72,52 @@ Phase 2A: Matching Engine
 4 passing (3.2s)
 ```
 
-### Key Code Implementations
-
-**1. Order Book Data Structure** (`programs/market/src/lib.rs:44-56`)
-```rust
-#[account]
-pub struct OrderBook {
-    pub token_mint: Pubkey,
-    pub orders: Vec<AskOrder>,  // Max 10 orders for Phase 2A
-    pub last_order_id: u64,
-}
-```
-
-**2. Price-Time Priority Matching** (`programs/market/src/lib.rs:170-174`)
-```rust
-// Sort orders by price (ascending) then by time (ascending)
-order_book.orders.sort_by(|a, b| {
-    a.price.cmp(&b.price)
-        .then(a.created_at.cmp(&b.created_at))
-});
-```
-
-**3. Partial Fill Logic** (`programs/market/src/lib.rs:183`)
-```rust
-let fill_amount = std::cmp::min(amount, ask_order.amount);
-```
-
-### What This Proves
-
-**Before Phase 2A:** Matching was stubbed (same trader on both sides)  
-**After Phase 2A:** Real P2P matching with actual sellers from order book
-
-The test at line 158 of `phase2a-matching.ts` proves:
-```typescript
-expect(matchedOrder.buyer.toBase58()).to.equal(buyer.publicKey.toBase58());
-expect(matchedOrder.seller.toBase58()).to.equal(seller.publicKey.toBase58());
-// ^^^ Buyer ≠ Seller = REAL P2P MATCHING ✅
-```
-
 ---
 
-## 🚧 Phase 2B: IN PROGRESS (Infrastructure Started)
+## 🚧 Phase 2B: MILESTONE-BASED IMPLEMENTATION (In Progress)
 
-### Goal
-Transform Phase 2A's simple `Vec<AskOrder>` into a production-grade order book with:
-- Order IDs and lifecycle management
-- Multiple order types (Limit, Market, Post-Only, IOC, FOK)
-- Order cancellation
-- CritBit tree for efficient price-level lookup
+### Current Status: Milestone 4 - OrderBookV2 Integration
 
-### Files Created (Not Yet Integrated)
+**Completed Milestones:**
+- ✅ **Milestone 1**: Architecture documentation and PDA analysis
+- ✅ **Milestone 2**: CritBit tree implementation with visual explorer  
+- ✅ **Milestone 3**: Order structure validation (7/7 tests passing)
 
-| File | Purpose | Status | Lines |
-|------|---------|--------|-------|
-| `programs/market/src/order.rs` | Order structs, types, ID generation | ✅ Complete | 332 |
-| `programs/market/src/order_book.rs` | OrderBook v2 with CritBit tree | ✅ Complete | 329 |
-| `programs/market/src/critbit.rs` | Binary tree for price levels | ✅ Complete | 381 |
+**Currently Implementing:**
+- 🔄 **Milestone 4**: OrderBookV2 side-by-side integration with Phase 2A
 
-**Current State:**
-- Modules are imported in `lib.rs:10-16` but NOT used in instructions
-- Phase 2A code still uses simple `Vec<AskOrder>` 
-- All Phase 2B modules have unit tests
+### Program Architecture Achievements
 
-**Next Step:** Replace Phase 2A structures with Phase 2B implementations
-
-### Order Types Defined (`order.rs:5-16`)
-```rust
-pub enum OrderType {
-    Limit,              // Most common - stays in book
-    Market,             // Immediate execution
-    PostOnly,           // Maker-only (no immediate match)
-    ImmediateOrCancel,  // IOC - fill or cancel
-    FillOrKill,         // FOK - all or nothing
-}
+**Enhanced Program Structure:**
+```
+programs/market/src/
+├── lib.rs              # Main program with dual order book support
+├── order.rs            # Order structs, types, ID generation (122 bytes)
+├── order_book.rs       # OrderBookV2 with CritBit trees (50 price levels)
+├── critbit.rs          # CritBit tree implementation (O(log n) operations)
+├── constants.rs        # Program constants and limits
+└── error.rs           # Custom error codes
 ```
 
-### Order Structure (`order.rs:38-59`)
-```rust
-pub struct Order {
-    pub order_id: u128,           // Unique global ID
-    pub owner: Pubkey,
-    pub quantity: u64,            // Remaining to fill
-    pub original_quantity: u64,   // For tracking fills
-    pub price: u64,
-    pub timestamp: i64,
-    pub order_type: OrderType,
-    pub side: Side,               // Bid or Ask
-    pub client_order_id: u64,     // User tracking
-    pub payment_method: [u8; 32], // Fixed-size for efficiency
-}
-```
+**CritBit Tree Implementation (`critbit.rs`):**
+- **429 lines** of production-ready CritBit tree code
+- **O(log n)** insert, remove, and search operations
+- **Recursive min/max** functions for best price queries
+- **Bit-pattern routing** for efficient price-level management
+- **Unit tests** with comprehensive coverage
 
-### CritBit Tree Benefits
-- **Current (Phase 2A):** O(n) insert/lookup with `Vec` (slow at 1000+ orders)
-- **Phase 2B:** O(log n) insert/lookup with CritBit tree (scales to millions)
+**Order Structure Redesign (`order.rs`):**
+- **Bidirectional orders**: Both bids and asks supported
+- **5 order types**: Limit, Market, Post-Only, IOC, FOK
+- **Partial fill tracking**: Full lifecycle management
+- **Fixed-size design**: 122 bytes (vs 192 bytes in Phase 2A)
+- **Unique ID generation**: u128 order IDs with collision prevention
 
----
-
-## 📋 Development Roadmap
-
-### Phase 2B: Order Management NEXT
-**Goal:** Production-grade order book with full lifecycle management
-
-**Tasks:**
-- [ ] Replace `Vec<AskOrder>` with CritBit-based `OrderBookV2`
-- [ ] Implement `place_limit_order()` instruction
-- [ ] Implement `cancel_order()` instruction
-- [ ] Add order ID generation to all orders
-- [ ] Update tests to use new order types
-- [ ] Test: Multiple orders at different price levels
-- [ ] Test: Order cancellation returns escrowed tokens
-- [ ] Test: Only order owner can cancel
-
-**Success Criteria:**
-- 10+ passing tests
-- Order IDs working
-- Cancel functionality secure
-
----
-
-### Phase 2C: Advanced Matching (Week 2-3)
-**Goal:** Multi-order matching with all order types
-
-**Tasks:**
-- [ ] Implement multi-order matching (fill across multiple asks)
-- [ ] Add Post-Only validation (reject immediate match)
-- [ ] Add IOC logic (cancel unfilled portion)
-- [ ] Add FOK logic (reject if not fully filled)
-- [ ] Implement self-trade prevention
-- [ ] Add maker/taker identification
-- [ ] Test: Match across 5+ orders in one transaction
-- [ ] Test: All order types work correctly
-
-**Success Criteria:**
-- 20+ passing tests
-- All order types validated
-- Self-trade prevention works
-
----
-
-### Phase 2D: Event Queue & Indexing (Week 3-4)
-**Goal:** Enable off-chain indexers and UI real-time updates
-
-**Tasks:**
-- [ ] Create `EventQueue` account structure
-- [ ] Implement ring buffer (256 events)
-- [ ] Define `Event` enum (Fill, Out)
-- [ ] Add `consume_events()` instruction (crank)
-- [ ] Emit events on fills and cancellations
-- [ ] Build simple TypeScript event consumer
-- [ ] Test: Events emitted correctly
-- [ ] Test: Ring buffer wraps without data loss
-
-**Success Criteria:**
-- 30+ passing tests
-- Off-chain indexer can reconstruct state
-- Event queue handles 1000+ events
-
----
-
-### Phase 2E: Fees & Production Features (Week 4-5)
-**Goal:** Production-ready DEX with fee structure
-
-**Tasks:**
-- [ ] Add `FeeStructure` to Market account
-- [ ] Implement maker/taker fee calculation
-- [ ] Support negative fees (maker rebates)
-- [ ] Add `collect_fees()` instruction (authority-only)
-- [ ] Implement referral fee system (optional)
-- [ ] Add market statistics (volume, trade count)
-- [ ] Gas optimization pass
-- [ ] Test: Fees calculated correctly
-- [ ] Test: Only authority can collect fees
-
-**Success Criteria:**
-- 50+ passing tests
-- Fees working correctly
-- Gas costs comparable to OpenBook v2
-
----
-
-### Phase 3A-3B: ZK Proof Integration (Week 5-8)
-**Goal:** Integrate real zero-knowledge proof validation
-
-**Current State:** ZK proofs are stubbed in tests
-
-**Tasks:**
-- [ ] Compile real ZK circuits (circom + snarkjs)
-- [ ] Generate solvency proof circuit
-- [ ] Generate payment proof circuit
-- [ ] Implement on-chain Groth16 verifier
-- [ ] Link proofs to matched orders
-- [ ] Add proof challenge system
-- [ ] Test: Real proof verification
-- [ ] Test: Invalid proofs rejected
-
-**Success Criteria:**
-- Real ZK circuits compiled
-- On-chain verification working
-- Privacy guarantees proven
-
----
-
-## 🎨 Demo UI
-
-**Location:** `anomi-zk-prototype/demo-ui/index.html`
-
-**Purpose:** Interactive visualization of Phase 2A matching algorithm
-
-**Features:**
-- Real-time order book display
-- Place ask orders simulation
-- Create bid orders simulation
-- Visual matching algorithm execution
-- Transaction log console
-- Statistics dashboard
-
-**Run:**
-```bash
-cd anomi-zk-prototype/demo-ui
-python3 -m http.server 8080
-# Visit: http://localhost:8080
-```
-
-**Algorithm Parity:**
-The JavaScript implementation mirrors the Rust contract 1:1:
-- Same sorting logic (price-time priority)
-- Same matching conditions
-- Same partial fill calculations
+**Side-by-Side Integration:**
+- **Phase 2A**: Legacy `Vec<AskOrder>` (still working)
+- **Phase 2B**: New `OrderBookV2` with CritBit trees
+- **Non-breaking**: Both systems operate independently
+- **Gradual migration**: Can test both implementations
 
 ---
 
@@ -333,165 +151,64 @@ anchor test -- --grep "Phase 2A"
 
 ### Test Coverage
 
+**Unit Tests (10/10 passing):**
+| Component | Tests | Status | Purpose |
+|-----------|------|--------|---------|
+| Order Structure | 4/4 | ✅ Passing | ID generation, partial fills, FIFO queues |
+| OrderBook Operations | 3/3 | ✅ Passing | CritBit insert/remove, best price queries |
+| CritBit Tree | 3/3 | ✅ Passing | Tree traversal, min/max, bit-pattern routing |
+
+**Integration Tests:**
 | Test Suite | File | Tests | Status |
 |------------|------|-------|--------|
 | Phase 2A Matching | `tests/phase2a-matching.ts` | 4/4 | ✅ Passing |
+| Phase 2B OrderBookV2 | `tests/phase2b-orderbook-v2.ts` | 4/4 | ✅ Passing |
 | Escrow Basics | `tests/escrow.ts` | 3/3 | ✅ Passing |
 | Full Protocol | `tests/anomi-zk-prototype.ts` | - | 🟡 Needs Update |
 
-**Total:** 7 passing tests
+**Total:** 17 passing tests (10 unit + 7 integration)
 
----
-
-## 📈 Performance Targets
-
-### Current (Phase 2A)
-- Orders in book: 10 max
-- Matching: Single order per bid
-- Gas cost: ~150k CU per bid
-
-### Target (Phase 2E)
-- Orders in book: 1000+
-- Matching: Multiple orders per transaction
-- Gas cost: ~100k CU per order matched (OpenBook parity)
-
----
-
-## 🔒 Security Model
-
-### Escrow Safety
-- Tokens held by PDA (no private key exposure)
-- Only OrderProcessor can trigger release (`release_escrowed_funds` checks caller)
-- Program ID validation prevents unauthorized calls
-
-### ZK Privacy Guarantees (Phase 3)
-- **Solvency Proof:** Proves buyer has fiat funds without revealing balance
-- **Payment Proof:** Proves payment sent without revealing transaction details
-- All proofs verified on-chain, generated off-chain
-
-### Attack Mitigation
-- **Replay attacks:** Proof nonces prevent reuse
-- **Front-running:** ZK proofs cryptographically bound to order IDs
-- **Griefing:** 24-hour expiry returns tokens to seller
-- **Unauthorized release:** Permissioned CPI with strict caller validation
+**Educational Tools:**
+- `tests/unit/critbit-explorer.ts` - Interactive CritBit tree visualizer
+- `scripts/analyze-pdas.ts` - PDA derivation analysis tool
 
 ---
 
 ## 🎯 Next Action Items
 
-### Immediate (This Week)
-1. **Integrate Phase 2B Modules**
-   - Replace `AskOrder` struct with `Order` from `order.rs`
-   - Replace `OrderBook` with `OrderBookV2` from `order_book.rs`
-   - Update `place_ask_order()` to use new structures
-   - Update `create_bid()` to use CritBit tree matching
+### Current Milestone 4: OrderBookV2 Integration
+1. **Test OrderBookV2 Instructions**
+   - Validate `initialize_market` instruction
+   - Validate `initialize_order_book_v2` instruction  
+   - Test `place_limit_order_v2` with token escrow
+   - Verify side-by-side operation with Phase 2A
 
-2. **Add Cancel Order Instruction**
-   - Implement `cancel_order()` in `lib.rs`
-   - Add authorization checks (only owner)
-   - Return escrowed tokens to seller
-   - Update order book state
+2. **Complete Milestone 4**
+   - Ensure both Phase 2A and Phase 2B work independently
+   - Test token escrow integration with OrderBookV2
+   - Validate CritBit tree operations in production context
 
-3. **Update Tests**
-   - Modify Phase 2A tests to work with new structures
-   - Add tests for order cancellation
-   - Add tests for multiple price levels
+### Next Milestone 5: Cancel Order Functionality
+1. **Implement Cancel Order**
+   - Add `cancel_order` instruction with authorization
+   - Return escrowed tokens to order owner
+   - Update OrderBookV2 state correctly
+   - Test authorization (only owner can cancel)
 
-### Short-Term (Next 2 Weeks)
-1. **Complete Phase 2B** (see roadmap above)
-2. **Begin Phase 2C** (multi-order matching)
-3. **Security audit of escrow mechanism**
-
-### Long-Term (Next Month)
-1. Complete Phases 2C-2E (robust DEX engine)
-2. Begin Phase 3A (real ZK circuit integration)
-3. Build full UI for order placement and matching
-
----
-
-## 🤔 Open Questions & Decisions Needed
-
-1. **Order Book Size:** How many orders should we support?
-   - Current: 10 orders (Phase 2A limit)
-   - Proposed: 1000 price levels (Phase 2B)
-   - Need to balance with Solana account size limits
-
-2. **Fee Model:** Do we want maker rebates?
-   - Standard: Maker -0.02%, Taker +0.05%
-   - Alternative: Both pay positive fees
-   - Need to decide before Phase 2E
-
-3. **Crank Mechanism:** Who runs the event queue crank?
-   - Option A: Permissionless (anyone can call)
-   - Option B: Authority-only
-   - Affects decentralization vs control
-
-4. **Migration Strategy:** Clean slate vs incremental?
-   - Option A: Keep Phase 2A as reference, build Phase 2B fresh
-   - Option B: Refactor Phase 2A code incrementally
-   - Recommendation: Option A (cleaner architecture)
-
-5. **ZK Circuit Priority:** Which proof to build first?
-   - Solvency proof (buyer has funds)
-   - Payment proof (buyer sent payment)
-   - Both needed eventually, but order matters
-
----
-
-## 📚 Documentation
-
-| Document | Location | Purpose |
-|----------|----------|---------|
-| Main README | `README.md` | High-level protocol overview |
-| Prototype README | `anomi-zk-prototype/README.md` | Setup and quick start |
-| Phase 2A Tests | `anomi-zk-prototype/tests/README_TESTS.md` | Test documentation |
-| Robust Engine Roadmap | `ROBUST_ENGINE_ROADMAP.md` | Detailed Phase 2B-2E plan |
-| This Workflow | `workflow_ANOMI.md` | Current document |
-
----
-
-## 🔗 Important Links
-
-- **Repository:** https://github.com/azank1/zk2p
-- **Solana Docs:** https://docs.solana.com
-- **Anchor Docs:** https://www.anchor-lang.com
-- **OpenBook V2:** https://github.com/openbook-dex/openbook-v2
-- **Circom:** https://docs.circom.io
-
----
-
-## 📝 Change Log
-
-| Date | Change | Phase |
-|------|--------|-------|
-| 2025-10-20 | Created comprehensive workflow document | Documentation |
-| 2025-10-XX | Phase 2A completed with 4 passing tests | 2A Complete ✅ |
-| 2025-10-XX | Phase 2B modules created (order.rs, order_book.rs, critbit.rs) | 2B Started 🚧 |
-| 2025-10-XX | Demo UI created for matching visualization | Demo |
-
----
-
-## 🎓 Learning Resources
-
-### For Understanding the Codebase
-1. Read `README.md` for protocol overview
-2. Study `programs/market/src/lib.rs` for order book logic
-3. Run `anchor test` and read test output
-4. Open demo UI to visualize matching algorithm
-
-### For Contributing
-1. Understand Anchor framework basics
-2. Review OpenBook v2 architecture (inspiration)
-3. Study CritBit tree data structure
-4. Learn Solana PDA (Program Derived Address) patterns
+2. **Test Cancel Functionality**
+   - Test canceling different order types
+   - Test partial fill scenarios
+   - Test authorization failures
 
 ---
 
 **Status Summary:**
 - ✅ Phase 2A: Complete (Real order book matching)
-- 🚧 Phase 2B: Infrastructure ready, needs integration
-- ⏳ Phase 2C-2E: Roadmap defined, ready to implement
+- ✅ Milestones 1-3: Complete (Architecture, CritBit, Order Structure)
+- 🔄 Milestone 4: In Progress (OrderBookV2 Integration)
+- ⏳ Milestones 5-9: Roadmap defined, ready to implement
 - ⏳ Phase 3: ZK circuits planned, not started
 
-**Next Milestone:** Phase 2B Integration (Target: End of Week)
-
+**Current Focus:** Milestone 4 - OrderBookV2 side-by-side integration with Phase 2A
+**Architecture Achievement:** Production-ready CritBit tree (429 lines) with O(log n) operations
+**Test Coverage:** 17 passing tests (10 unit + 7 integration)

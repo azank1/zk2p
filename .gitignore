@@ -1,30 +1,46 @@
-# Exclude all directories except anomi-zk-prototype
-openbook-v2/
-serum-dex/
-zk2p/
-.docs/
-
-# Node modules
-node_modules/
-
-# Build artifacts
+# Build artifacts (can be regenerated)
 target/
 .anchor/
+**/target/
+**/.anchor/
 
-# IDE
+# Node modules (can be reinstalled)
+node_modules/
+**/node_modules/
+
+# IDE files
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
-
-# Internal documentation (local reference only)
-docs/
-anomi-zk-prototype/.docs/
-anomi-zk-prototype/docs/
+desktop.ini
 
 # Solana testing artifacts
 test-ledger/
 .solana-test-ledger/
-.anchor/
+**/test-ledger/
+**/.solana-test-ledger/
+
+# Development artifacts
+*.log
+*.tmp
+*.temp
+
+# TypeScript build info
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Generated files
+**/generated/
+**/dist/
+
+# Keep essential files:
+# - Source code (programs/, tests/, scripts/)
+# - Configuration (Anchor.toml, Cargo.toml, package.json)
+# - Documentation (README.md, workflow_ANOMI.md)
+# - Tests (all .ts files)

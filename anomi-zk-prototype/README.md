@@ -1,6 +1,6 @@
-# ZK2P Protocol - Phase 2A
+# ZK2P Protocol - Phase 2B Implementation
 
-Zero-knowledge peer-to-peer settlement with production matching engine.
+Zero-knowledge peer-to-peer settlement with production matching engine and CritBit-based order book.
 
 ## 🎮 Interactive Demo
 
@@ -19,27 +19,45 @@ The demo visualizes the exact price-time priority algorithm from the Rust contra
 ```bash
 yarn install
 anchor build
-anchor test
+
+# Run unit tests (isolated components)
+cargo test --package market --lib order::tests
+cargo test --package market --lib order_book::tests
+cargo test --package market --lib critbit::tests
+
+# Run integration tests (full workflows)
+anchor test -- --grep "Phase 2A"  # Legacy matching engine
+anchor test -- --grep "Phase 2B"  # New OrderBookV2
 ```
 
-## Test Results
+## Current Test Results
 
+**Unit Tests (10/10 passing):**
 ```
-5 passing (10s)
-  ✔ Escrow vault and order book initialization
-  ✔ Ask order placement with token custody
-  ✔ Bid matching with real seller (partial fills)
-  ✔ Order book state updates
-  ✔ Validation (rejects non-matching bids)
+Order Tests (4/4):
+  ✔ test_order_creation
+  ✔ test_order_fill  
+  ✔ test_unique_order_ids
+  ✔ test_order_queue
+
+OrderBook Tests (3/3):
+  ✔ test_order_book_insert
+  ✔ test_order_book_remove
+  ✔ test_order_book_best_price
+
+CritBit Tests (3/3):
+  ✔ test_critbit_insert_remove
+  ✔ test_critbit_min_max
+  ✔ test_critbit_traversal
 ```
 
-## Phase 2A Features
+## Phase 2B Features
 
-- **Order Book**: On-chain PDA storage with price-time priority
-- **Matching Engine**: Bid orders match against real ask orders
-- **Partial Fills**: Orders can be partially matched
-- **Token Custody**: SPL tokens held in escrow during trading
-- **Multi-Seller**: True P2P marketplace (not stub)
+- **Dual Order Book**: Phase 2A (Vec<AskOrder>) + Phase 2B (CritBit + Order)
+- **CritBit Trees**: O(log n) price-level operations, 50 price levels max
+- **Order Structure**: Bidirectional, 5 order types, partial fill tracking
+- **Educational Tools**: CritBit explorer, PDA analyzer
+- **Side-by-Side**: Both systems work independently
 
 ## Architecture
 
@@ -84,7 +102,14 @@ anomi-zk-prototype/
 
 ## Development Status
 
-**Current**: Phase 2A Complete (Production Matching Engine)
-**Next**: Phase 2B (Real ZK proof validation)
+**Current**: Milestone 4 - OrderBookV2 Integration (Phase 2B)
+**Completed**: Milestones 1-3 (Architecture, CritBit, Order Structure)
+**Next**: Milestone 5 (Cancel Orders), Milestone 6 (Complete Migration)
 
-See parent `README.md` for full protocol documentation.
+**Educational Approach:**
+- Each component testable in isolation
+- Visual tools for understanding CritBit trees
+- Side-by-side Phase 2A/2B comparison
+- Comprehensive documentation in `docs/architecture/`
+
+See `workflow_ANOMI.md` for complete roadmap and parent `README.md` for protocol details.

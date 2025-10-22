@@ -1,12 +1,27 @@
 # Test Suite Guide
 
-## Phase 2A Matching Engine Tests
+## Current Test Structure (Phase 2B Implementation)
 
-### Test Files
+### Unit Tests (Isolated Components)
 
-1. **`phase2a-matching.ts`** - Phase 2A matching engine tests ✅ CORE TEST
-2. **`escrow.ts`** - Phase 0.5 token escrow tests
-3. **`anomi-zk-prototype.ts`** - End-to-end settlement flow tests (may need updates)
+**Rust Unit Tests:**
+```bash
+# Order structure and lifecycle
+cargo test --package market --lib order::tests
+
+# OrderBook with CritBit operations  
+cargo test --package market --lib order_book::tests
+
+# CritBit tree data structure
+cargo test --package market --lib critbit::tests
+```
+
+### Integration Tests (Full Workflows)
+
+1. **`phase2a-matching.ts`** - Phase 2A matching engine (legacy Vec<AskOrder>)
+2. **`phase2b-orderbook-v2.ts`** - Phase 2B OrderBookV2 integration (new CritBit + Order)
+3. **`escrow.ts`** - Phase 0.5 token escrow tests
+4. **`anomi-zk-prototype.ts`** - End-to-end settlement flow tests
 
 ### Quick Start
 
@@ -22,44 +37,68 @@ This will:
 - Run all tests
 - Clean up when done
 
-#### Run Only Phase 2A Tests
+#### Run Specific Test Suites
 ```bash
+# Phase 2A (legacy matching engine)
 anchor test -- --grep "Phase 2A"
+
+# Phase 2B (new OrderBookV2)
+anchor test -- --grep "Phase 2B"
+
+# All integration tests
+anchor test
 ```
 
-### What Phase 2A Tests Prove
+### What Each Test Suite Proves
 
-The `phase2a-matching.ts` test proves:
-
+**Phase 2A Tests (`phase2a-matching.ts`):**
 ✅ **Test 1**: Order book initialization works
-✅ **Test 2**: Ask orders are stored in order book (not just logged)
+✅ **Test 2**: Ask orders stored in Vec<AskOrder> order book
 ✅ **Test 3**: **MATCHING ENGINE** - Bid matches against real ask order
-   - Real buyer and seller (not stubbed same trader)
-   - Partial fills work correctly
-   - Order book updated after match
 ✅ **Test 4**: Validation works (rejects bids with no matching orders)
 
-### Test 3 is the CORE proof
+**Phase 2B Tests (`phase2b-orderbook-v2.ts`):**
+✅ **Test 1**: OrderBookV2 initialization with CritBit trees
+✅ **Test 2**: Place limit orders using new Order structure
+✅ **Test 3**: OrderBookV2 side-by-side with Phase 2A
+✅ **Test 4**: Token escrow integration with OrderBookV2
 
-
-- ✅ **NEW (Phase 2A)**: `create_bid` actually searches order book and matches real seller
+**Unit Tests (Rust):**
+✅ **Order Tests**: Unique ID generation, partial fills, FIFO queues
+✅ **OrderBook Tests**: CritBit insert/remove, best price queries  
+✅ **CritBit Tests**: Tree traversal, min/max operations, bit-pattern routing
 
 ### Expected Output
 
+**Unit Tests:**
+```
+running 4 tests
+test order::tests::test_unique_order_ids ... ok
+test order::tests::test_order_fill ... ok
+test order::tests::test_order_queue ... ok
+test order::tests::test_order_creation ... ok
+test result: ok. 4 passed; 0 failed
+
+running 3 tests
+test order_book::tests::test_order_book_insert ... ok
+test order_book::tests::test_order_book_remove ... ok
+test order_book::tests::test_order_book_best_price ... ok
+test result: ok. 3 passed; 0 failed
+```
+
+**Integration Tests:**
 ```
 Phase 2A: Matching Engine
   ✓ Initializes escrow vault and order book
   ✓ Places ask order and stores it in order book
   ✓ Matches bid against ask order (CORE TEST)
-    ✅ Matched! Buyer: [buyer_pubkey]
-    ✅ Matched! Seller: [seller_pubkey]
-    ✅ Amount: 50000000
-    ✅ Price: 50000
-    ✅ Order book updated: 50 tokens remaining
-    🎉 PHASE 2A MATCHING ENGINE VERIFIED!
   ✓ Rejects bid when no matching orders exist
 
-4 passing
+Phase 2B: OrderBookV2 Integration
+  ✓ Initializes OrderBookV2 with CritBit trees
+  ✓ Places limit orders using Order structure
+  ✓ Side-by-side operation with Phase 2A
+  ✓ Token escrow integration
 ```
 
 ### Troubleshooting

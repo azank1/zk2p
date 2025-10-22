@@ -290,39 +290,83 @@ impl CritBitTree {
         }
     }
     
-    /// Get the minimum key (leftmost leaf) - best ask price
+    /// Get the minimum key - best ask price
+    /// CritBit trees don't maintain BST ordering, so we must check all leaves
     pub fn min(&self) -> Option<(u64, u32)> {
         if self.root == CritBitNode::EMPTY {
             return None;
         }
         
-        let mut current = self.root;
-        loop {
-            let node = self.nodes[current as usize];
-            
-            if node.is_leaf {
-                return Some((node.key, node.order_index));
+        self.find_min_leaf(self.root)
+    }
+    
+    /// Recursively find the leaf with minimum key in subtree
+    fn find_min_leaf(&self, node_index: u32) -> Option<(u64, u32)> {
+        if node_index == CritBitNode::EMPTY {
+            return None;
+        }
+        
+        let node = self.nodes[node_index as usize];
+        
+        if node.is_leaf {
+            return Some((node.key, node.order_index));
+        }
+        
+        // Inner node - check both subtrees
+        let left_min = self.find_min_leaf(node.left);
+        let right_min = self.find_min_leaf(node.right);
+        
+        match (left_min, right_min) {
+            (Some((lkey, lidx)), Some((rkey, ridx))) => {
+                if lkey < rkey {
+                    Some((lkey, lidx))
+                } else {
+                    Some((rkey, ridx))
+                }
             }
-            
-            current = node.left;
+            (Some(l), None) => Some(l),
+            (None, Some(r)) => Some(r),
+            (None, None) => None,
         }
     }
     
-    /// Get the maximum key (rightmost leaf) - best bid price
+    /// Get the maximum key - best bid price
+    /// CritBit trees don't maintain BST ordering, so we must check all leaves
     pub fn max(&self) -> Option<(u64, u32)> {
         if self.root == CritBitNode::EMPTY {
             return None;
         }
         
-        let mut current = self.root;
-        loop {
-            let node = self.nodes[current as usize];
-            
-            if node.is_leaf {
-                return Some((node.key, node.order_index));
+        self.find_max_leaf(self.root)
+    }
+    
+    /// Recursively find the leaf with maximum key in subtree
+    fn find_max_leaf(&self, node_index: u32) -> Option<(u64, u32)> {
+        if node_index == CritBitNode::EMPTY {
+            return None;
+        }
+        
+        let node = self.nodes[node_index as usize];
+        
+        if node.is_leaf {
+            return Some((node.key, node.order_index));
+        }
+        
+        // Inner node - check both subtrees
+        let left_max = self.find_max_leaf(node.left);
+        let right_max = self.find_max_leaf(node.right);
+        
+        match (left_max, right_max) {
+            (Some((lkey, lidx)), Some((rkey, ridx))) => {
+                if lkey > rkey {
+                    Some((lkey, lidx))
+                } else {
+                    Some((rkey, ridx))
+                }
             }
-            
-            current = node.right;
+            (Some(l), None) => Some(l),
+            (None, Some(r)) => Some(r),
+            (None, None) => None,
         }
     }
 }
@@ -361,6 +405,9 @@ mod tests {
         tree.insert(100, 0).unwrap();
         tree.insert(300, 2).unwrap();
         
+        // Test min/max functions
+        // Note: CritBit routes by bit patterns, not values
+        // So tree structure may have 300 on LEFT and 200 on RIGHT!
         assert_eq!(tree.min(), Some((100, 0)));
         assert_eq!(tree.max(), Some((300, 2)));
     }
