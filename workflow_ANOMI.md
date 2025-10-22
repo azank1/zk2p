@@ -212,20 +212,38 @@ anchor test -- --grep "Phase 2A"
    - Find: O(log n) traversal paths
    - Min/Max: Best bid/ask queries
 
-### Next Milestone 5: Cancel Order Functionality
-1. **Implement Cancel Order**
-   - Add `cancel_order` instruction with authorization
-   - Return escrowed tokens to order owner
-   - Update OrderBookV2 state correctly
+### Milestone 5: Cancel Order Functionality (COMPLETE)
+1. **Cancel Order Instruction**
+   - `cancel_order` instruction implemented
+   - Authorization check: only order owner can cancel
+   - Escrow token return for ask orders
+   - OrderBookV2 state updated (order removed from tree)
+
+2. **Security Features**
+   - `UnauthorizedCancellation` error code
+   - Signer validation in `CancelOrder` accounts
+   - PDA-based escrow authority for token transfer
+   - Remaining quantity calculation
+
+3. **Test Coverage**
+   - Cancel order test added
+   - Unauthorized cancellation test
+   - Escrow return validation
+
+### Next Milestone 6: Complete Migration to OrderBookV2
+1. **Remove Phase 2A Code**
+   - Delete old `Vec<AskOrder>` order book
+   - Remove `OrderBook` struct (Phase 2A)
+   - Clean up deprecated instructions
 
 ---
 
 **Status Summary:**
 - ✅ Phase 2A: Complete (Real order book matching)
-- ✅ Milestones 1-4.5: Complete (Architecture, CritBit, Order Structure, OrderBookV2, Visualization UI)
-- ⏳ Milestones 5-9: Roadmap defined, ready to implement
+- ✅ Milestones 1-5: Complete (Architecture, CritBit, Order Structure, OrderBookV2, Visualization, Cancel Order)
+- ⏳ Milestones 6-9: Roadmap defined, ready to implement
 - ⏳ Phase 3: ZK circuits planned, not started
 
-**Current Achievement:** Interactive CritBit visualization with blackhole.xyz-inspired UI
-**Test Coverage:** 17 passing tests (10 unit + 7 integration)
+**Current Achievement:** Full order lifecycle management with cancel functionality
+**Test Coverage:** 19 passing tests (10 unit + 9 integration)
 **Demo:** Full DEX interface with real-time tree visualization

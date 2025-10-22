@@ -413,6 +413,66 @@ pub mod market {
         
         Ok(order_id)
     }
+
+    /// Cancel an order and return escrowed tokens
+    pub fn cancel_order(
+        ctx: Context<CancelOrder>,
+        order_id: u128,
+        side: Side,
+        price: u64,
+    ) -> Result<()> {
+        let order_book = &mut ctx.accounts.order_book_v2;
+        
+        // Remove order from order book
+        let order = order_book.remove_order(order_id, side, price)?;
+        
+        // Verify the caller is the order owner
+        require!(
+            order.owner == ctx.accounts.owner.key(),
+            ErrorCode::UnauthorizedCancellation
+        );
+        
+        msg!(
+            "Market: Cancelling order - ID: {}, owner: {}, side: {:?}, price: {}",
+            order_id,
+            ctx.accounts.owner.key(),
+            side,
+            price
+        );
+        
+        // If this was an Ask order, return escrowed tokens
+        if side == Side::Ask {
+            let remaining_quantity = order.quantity; // quantity is already the remaining amount
+            
+            if remaining_quantity > 0 {
+                let token_mint_key = ctx.accounts.token_mint.key();
+                let seeds = &[
+                    b"escrow_authority",
+                    token_mint_key.as_ref(),
+                    &[ctx.bumps.escrow_authority],
+                ];
+                let signer_seeds = &[&seeds[..]];
+                
+                let transfer_ctx = CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    Transfer {
+                        from: ctx.accounts.escrow_vault.to_account_info(),
+                        to: ctx.accounts.owner_token_account.to_account_info(),
+                        authority: ctx.accounts.escrow_authority.to_account_info(),
+                    },
+                    signer_seeds,
+                );
+                
+                token::transfer(transfer_ctx, remaining_quantity)?;
+                msg!("Market: Returned {} tokens from escrow", remaining_quantity);
+            }
+        }
+        
+        msg!("Market: Order cancelled successfully");
+        msg!("Market: Total orders remaining: {}", order_book.total_orders);
+        
+        Ok(())
+    }
 }
 
 // ============================================================================
@@ -650,6 +710,46 @@ pub struct PlaceLimitOrderV2<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct CancelOrder<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = owner_token_account.owner == owner.key() @ ErrorCode::InvalidTokenAccountOwner,
+        constraint = owner_token_account.mint == token_mint.key() @ ErrorCode::InvalidMint,
+    )]
+    pub owner_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        seeds = [b"escrow_vault", token_mint.key().as_ref()],
+        bump,
+        constraint = escrow_vault.mint == token_mint.key() @ ErrorCode::InvalidMint,
+    )]
+    pub escrow_vault: InterfaceAccount<'info, TokenAccount>,
+
+    /// CHECK: PDA that has authority over escrow vault
+    #[account(
+        seeds = [b"escrow_authority", token_mint.key().as_ref()],
+        bump,
+    )]
+    pub escrow_authority: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"order_book_v2", token_mint.key().as_ref()],
+        bump,
+    )]
+    pub order_book_v2: Account<'info, OrderBookV2>,
+
+    pub token_mint: InterfaceAccount<'info, Mint>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
 // ============================================================================
 // Error Codes
 // ============================================================================
@@ -679,4 +779,7 @@ pub enum ErrorCode {
 
     #[msg("No matching orders found for this bid")]
     NoMatchingOrders,
+
+    #[msg("Unauthorized cancellation - only order owner can cancel")]
+    UnauthorizedCancellation,
 }
