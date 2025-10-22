@@ -38,7 +38,7 @@ test-ledger/
 # Generated files
 **/generated/
 **/dist/
-
+./cursor
 # Keep essential files:
 # - Source code (programs/, tests/, scripts/)
 # - Configuration (Anchor.toml, Cargo.toml, package.json)

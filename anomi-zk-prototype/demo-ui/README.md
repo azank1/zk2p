@@ -1,63 +1,60 @@
-# ZK2P Order Matching Engine - Interactive Demo
+# 2k2Peer DEX Interface
 
-## Quick Start
+Interactive visualization of CritBit tree-based order matching.
 
-Open `index.html` in your browser:
-
-```bash
-# From this directory
-open index.html  # macOS
-xdg-open index.html  # Linux
-start index.html  # Windows
-```
-
-Or start a simple HTTP server:
+## Run Locally
 
 ```bash
-python3 -m http.server 8080
-# Then visit: http://localhost:8080
+python -m http.server 8080 --bind 127.0.0.1
 ```
 
-## What This Demo Shows
+Open http://127.0.0.1:8080 in your browser.
 
-This interactive UI simulates the **exact matching algorithm** from the Rust smart contract:
+## Features
 
-### Algorithm Details
+**Order Entry:**
+- Place ask orders (sell)
+- Place bid orders (buy)
+- Real-time order matching
 
-**Sorting (Price-Time Priority):**
-```rust
-orders.sort_by(|a, b| a.price.cmp(&b.price).then(a.created_at.cmp(&b.created_at)))
-```
+**Order Book:**
+- Live price-time sorted orders
+- Partial fill tracking
 
-**Matching Logic:**
-- Sort all ask orders by **price (ascending)** → cheapest first
-- Within same price, sort by **timestamp (ascending)** → oldest first (FIFO)
-- Match bid against all asks where `ask.price ≤ bid.price`
-- Support **partial fills** (split orders across multiple matches)
+**CritBit Tree Graph:**
+- Interactive SVG visualization
+- Root nodes (green)
+- Internal nodes (purple) with bit positions
+- Leaf nodes (blue) with prices
 
-### UI Features
+**Tree Structure:**
+- Hierarchical view
+- Node properties display
+- Real-time synchronization
 
-1. **Place Ask Orders** - Add sell orders to the book (simulates `place_ask_order()`)
-2. **Create Bids** - Submit buy orders and watch matching in real-time (simulates `create_bid()`)
-3. **Live Order Book** - See sorted orders with price-time priority
-4. **Transaction Log** - Console-style output showing algorithm execution
-5. **Stats Dashboard** - Track active orders, matches, and volume
+**Transaction Log:**
+- All operations logged
+- Insert/Remove/Match events
+- CritBit tree operations
 
-### Try This
+## What It Demonstrates
 
-1. Add 3 ask orders: Alice (100 tokens @ $50), Bob (50 tokens @ $45), Carol (75 tokens @ $55)
-2. Order book will auto-sort: Bob → Alice → Carol (by price)
-3. Create bid: 120 tokens @ $52
-4. Watch matching: Fills Bob (50), then Alice (70 partial), Carol skipped (too expensive)
+**CritBit Operations:**
+- Insert: Add price levels with critical bit calculation
+- Remove: Delete price levels with tree rebalancing
+- Find: O(log n) price lookups
+- Min/Max: Best bid/ask queries
 
-## Algorithm Comparison
+**Order Matching:**
+- Price-time priority sorting
+- Partial fills
+- FIFO at same price level
+- Token escrow simulation
 
-| Feature | Demo UI | Rust Contract |
-|---------|---------|---------------|
-| Sorting | `Array.sort()` | `Vec::sort_by()` |
-| Price Priority | `a.price - b.price` | `a.price.cmp(&b.price)` |
-| Time Priority | `a.created_at - b.created_at` | `a.created_at.cmp(&b.created_at)` |
-| Matching | `askOrder.price <= price` | `ask_order.price <= price` |
-| Partial Fills | `Math.min(remaining, ask.amount)` | `std::cmp::min(amount, ask_order.amount)` |
+## Design
 
-The JavaScript implementation is a **1:1 simulation** of the Solana program logic.
+Blackhole.xyz-inspired UI:
+- Dark theme with glassmorphism
+- Neon accents (green/blue/purple)
+- Smooth animations
+- Responsive layout

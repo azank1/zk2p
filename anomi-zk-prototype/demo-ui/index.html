@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZK2P Phase 2A - Order Matching Demo</title>
+    <title>2k2Peer - DEX Interface</title>
     <style>
         * {
             margin: 0;
@@ -12,192 +12,228 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
             min-height: 100vh;
-            padding: 20px;
+            overflow-x: hidden;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
+        /* Glassmorphism Effects */
+        .glass-panel {
+            background: rgba(26, 26, 26, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 136, 0.2);
             border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 255, 136, 0.1);
         }
 
-        .header {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
+        .neon-glow {
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5),
+                        0 0 20px rgba(0, 255, 136, 0.3),
+                        0 0 30px rgba(0, 255, 136, 0.2);
         }
 
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+        .neon-glow-blue {
+            box-shadow: 0 0 10px rgba(0, 170, 255, 0.5),
+                        0 0 20px rgba(0, 170, 255, 0.3);
         }
 
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
+        .neon-glow-purple {
+            box-shadow: 0 0 10px rgba(170, 0, 255, 0.5),
+                        0 0 20px rgba(170, 0, 255, 0.3);
         }
 
-        .algorithm-info {
-            background: #f8f9fa;
+        /* Animations */
+        @keyframes node-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        @keyframes edge-draw {
+            from { stroke-dashoffset: 1000; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes glow-pulse {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
             padding: 20px;
-            border-bottom: 2px solid #e9ecef;
-        }
-
-        .algorithm-info h2 {
-            color: #2a5298;
-            margin-bottom: 15px;
-        }
-
-        .algorithm-box {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-            margin-bottom: 10px;
-        }
-
-        .algorithm-box code {
-            display: block;
-            background: #f1f3f5;
-            padding: 10px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            margin-top: 10px;
-            overflow-x: auto;
-        }
-
-        .main-content {
             display: grid;
-            grid-template-columns: 1fr 2fr;
+            grid-template-columns: 300px 1fr 1fr 350px;
+            grid-template-rows: auto 1fr;
             gap: 20px;
-            padding: 30px;
+            min-height: 100vh;
         }
 
         .panel {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
+            padding: 20px;
+            overflow: hidden;
+            animation: fade-in 0.5s ease;
         }
 
         .panel h3 {
-            color: #2a5298;
-            margin-bottom: 10px;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 8px;
+            color: #00ff88;
+            margin-bottom: 15px;
             font-size: 1.1em;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+            padding-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Order Entry Panel */
+        .order-entry {
+            grid-row: 1 / 3;
         }
 
         .form-group {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 3px;
-            font-weight: 600;
-            color: #495057;
+            margin-bottom: 5px;
+            color: #00ff88;
             font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .form-group input {
             width: 100%;
-            padding: 8px;
-            border: 2px solid #dee2e6;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 255, 136, 0.3);
             border-radius: 6px;
+            color: #fff;
             font-size: 0.9em;
+            transition: all 0.3s ease;
         }
 
         .form-group input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
         }
 
         .btn {
             width: 100%;
-            padding: 10px;
+            padding: 14px;
             border: none;
             border-radius: 6px;
             font-size: 0.9em;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        .btn-ask {
+            background: linear-gradient(135deg, #ff4444 0%, #cc3333 100%);
+            color: #fff;
         }
 
-        .btn-primary:hover {
+        .btn-ask:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
         }
 
-        .btn-secondary {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
+        .btn-bid {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #000;
         }
 
-        .btn-secondary:hover {
+        .btn-bid:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
         }
 
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-            margin-top: 10px;
+        .btn-clear {
+            background: rgba(102, 102, 102, 0.5);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .btn-danger:hover {
-            background: #c82333;
+        .btn-clear:hover {
+            background: rgba(136, 136, 136, 0.5);
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid rgba(0, 255, 136, 0.2);
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .stat-label {
+            font-size: 0.7em;
+            color: #999;
+            margin-top: 3px;
+            text-transform: uppercase;
+        }
+
+        /* Order Book */
+        .order-book-panel {
+            grid-row: 1 / 2;
         }
 
         .order-book {
-            background: white;
-            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 6px;
             padding: 15px;
-            margin-top: 10px;
-            max-height: 500px;
+            max-height: 400px;
             overflow-y: auto;
         }
 
         .order-item {
-            background: #f8f9fa;
-            padding: 12px;
-            margin-bottom: 10px;
-            border-radius: 6px;
-            border-left: 4px solid #28a745;
-            animation: slideIn 0.3s ease;
+            background: rgba(26, 26, 26, 0.8);
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border-left: 3px solid #00ff88;
+            font-size: 0.85em;
+            animation: fade-in 0.3s ease;
         }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+        .order-item.ask {
+            border-left-color: #ff4444;
         }
 
         .order-item.matched {
-            border-left-color: #ffc107;
-            background: #fff3cd;
-        }
-
-        .order-item.removed {
-            border-left-color: #dc3545;
-            background: #f8d7da;
-            opacity: 0.6;
+            border-left-color: #ffaa00;
+            background: rgba(255, 170, 0, 0.1);
+            animation: node-pulse 0.8s ease;
         }
 
         .order-meta {
@@ -206,42 +242,160 @@
             margin-bottom: 5px;
         }
 
-        .order-meta strong {
-            color: #2a5298;
+        .order-price {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        .order-price.ask {
+            color: #ff4444;
         }
 
         .order-details {
+            color: #999;
             font-size: 0.9em;
-            color: #6c757d;
         }
 
+        /* CritBit Graph */
+        .critbit-graph-panel {
+            grid-row: 1 / 2;
+        }
+
+        .svg-container {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 6px;
+            height: 400px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #critbitSVG {
+            width: 100%;
+            height: 100%;
+        }
+
+        .tree-node-svg {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tree-node-svg:hover {
+            filter: brightness(1.3);
+        }
+
+        .tree-node-root {
+            fill: #00ff88;
+        }
+
+        .tree-node-internal {
+            fill: #aa00ff;
+        }
+
+        .tree-node-leaf {
+            fill: #00aaff;
+        }
+
+        .tree-edge {
+            stroke: rgba(0, 255, 136, 0.5);
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 0;
+        }
+
+        .tree-edge.animated {
+            animation: edge-draw 0.6s ease;
+        }
+
+        .tree-label {
+            fill: #ffffff;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            text-anchor: middle;
+        }
+
+        /* Hierarchical Tree */
+        .hierarchy-panel {
+            grid-row: 1 / 2;
+        }
+
+        .tree-hierarchy {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 6px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+        }
+
+        .tree-node-hier {
+            margin: 5px 0;
+            padding: 8px;
+            background: rgba(26, 26, 26, 0.8);
+            border-radius: 3px;
+            border-left: 3px solid #00ff88;
+        }
+
+        .tree-node-hier.root {
+            border-left-color: #00ff88;
+        }
+
+        .tree-node-hier.internal {
+            border-left-color: #aa00ff;
+        }
+
+        .tree-node-hier.leaf {
+            border-left-color: #00aaff;
+        }
+
+        .tree-node-hier .node-label {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        .tree-node-hier .node-details {
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 3px;
+        }
+
+        .tree-children {
+            margin-left: 20px;
+            margin-top: 5px;
+        }
+
+        /* Transaction Log */
         .log-panel {
             grid-column: 1 / -1;
+            grid-row: 2 / 3;
         }
 
         .log-container {
-            background: #212529;
-            color: #00ff00;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 6px;
             padding: 15px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
             max-height: 300px;
             overflow-y: auto;
-            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
         }
 
         .log-entry {
             margin-bottom: 5px;
-            padding: 2px 0;
+            padding: 3px 0;
+            animation: fade-in 0.3s ease;
         }
 
         .log-entry.success {
-            color: #00ff00;
+            color: #00ff88;
         }
 
         .log-entry.info {
-            color: #17a2b8;
+            color: #00aaff;
         }
 
         .log-entry.error {
@@ -249,258 +403,641 @@
         }
 
         .log-entry.warning {
-            color: #ffc107;
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .stat-box {
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #667eea;
-        }
-
-        .stat-label {
-            font-size: 0.75em;
-            color: #6c757d;
-            margin-top: 3px;
+            color: #ffaa00;
         }
 
         .empty-state {
             text-align: center;
             padding: 40px;
-            color: #6c757d;
+            color: #666;
         }
 
-        .empty-state svg {
-            width: 64px;
-            height: 64px;
-            opacity: 0.3;
-            margin-bottom: 10px;
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .container {
+                grid-template-columns: 300px 1fr 1fr;
+                grid-template-rows: auto auto 1fr;
+            }
+            .hierarchy-panel {
+                grid-column: 1 / 2;
+                grid-row: 2 / 3;
+            }
+            .log-panel {
+                grid-column: 1 / -1;
+                grid-row: 3 / 4;
+            }
         }
 
-        .test-instructions {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 20px;
-            margin: 20px 30px;
-            border-radius: 8px;
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto auto auto;
+            }
+            .order-entry {
+                grid-row: 1 / 2;
+                grid-column: 1 / 2;
+            }
+            .order-book-panel {
+                grid-row: 1 / 2;
+                grid-column: 2 / 3;
+            }
+            .critbit-graph-panel {
+                grid-row: 2 / 3;
+                grid-column: 1 / 3;
+            }
+            .hierarchy-panel {
+                grid-row: 3 / 4;
+                grid-column: 1 / 3;
+            }
+            .log-panel {
+                grid-row: 4 / 5;
+                grid-column: 1 / 3;
+            }
         }
 
-        .test-instructions h3 {
-            color: #856404;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
         }
 
-        .test-instructions code {
-            background: #212529;
-            color: #00ff00;
-            padding: 2px 6px;
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 136, 0.3);
             border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
         }
 
-        .test-instructions pre {
-            background: #212529;
-            color: #00ff00;
-            padding: 15px;
-            border-radius: 6px;
-            overflow-x: auto;
-            font-family: 'Courier New', monospace;
-            margin: 10px 0;
-        }
-
-        .test-instructions ul {
-            margin-left: 20px;
-            line-height: 1.8;
-        }
-
-        .test-instructions li {
-            margin-bottom: 8px;
-        }
-
-        .test-instructions strong {
-            color: #856404;
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 255, 136, 0.5);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🔗 ZK2P Phase 2A - Order Matching Engine</h1>
-            <p>Interactive demo showing price-time priority matching algorithm</p>
-        </div>
-
-        <div class="algorithm-info">
-            <h2>📊 Matching Algorithm Explained</h2>
-            <div class="algorithm-box">
-                <strong>Price-Time Priority (Pro-Rata with FIFO)</strong>
-                <p>The matching engine uses a two-stage sorting algorithm:</p>
-                <code>orders.sort_by(|a, b| a.price.cmp(&b.price).then(a.created_at.cmp(&b.created_at)))</code>
-                <p style="margin-top: 10px;">
-                    <strong>Stage 1:</strong> Sort by price (ascending) - cheapest ask orders matched first<br>
-                    <strong>Stage 2:</strong> Sort by timestamp (ascending) - older orders matched first (FIFO)<br>
-                    <strong>Matching:</strong> Bid matches all asks where <code>ask.price ≤ bid.price</code>
-                </p>
-            </div>
-            <div class="algorithm-box">
-                <strong>Key Features</strong>
-                <ul style="margin-left: 20px; margin-top: 10px;">
-                    <li>✅ Partial fills supported (order can be split across multiple matches)</li>
-                    <li>✅ Orders stored in on-chain PDA (OrderBook account)</li>
-                    <li>✅ Tokens held in escrow until settlement</li>
-                    <li>✅ Cross-program invocation (CPI) to OrderStore for matched orders</li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="test-instructions">
-            <h3>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                </svg>
-                🧪 How to Run On-Chain Tests
-            </h3>
-            <p>This UI simulates the algorithm. To verify it works on Solana blockchain:</p>
+        <!-- Order Entry Panel -->
+        <div class="panel glass-panel order-entry">
+            <h3>Place Order</h3>
             
-            <p style="margin-top: 15px;"><strong>1. Install dependencies:</strong></p>
-            <pre>cd /path/to/anomi-zk-prototype
-yarn install</pre>
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="statOrders">0</div>
+                    <div class="stat-label">Orders</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="statMatches">0</div>
+                    <div class="stat-label">Matches</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="statVolume">0</div>
+                    <div class="stat-label">Volume</div>
+                </div>
+            </div>
 
-            <p><strong>2. Build the programs:</strong></p>
-            <pre>anchor build</pre>
+            <div class="form-group">
+                <label>Trader</label>
+                <input type="text" id="trader" placeholder="Trader Name" value="Alice">
+            </div>
+            
+            <div class="form-group">
+                <label>Amount</label>
+                <input type="number" id="amount" placeholder="100" value="100">
+            </div>
+            
+            <div class="form-group">
+                <label>Price</label>
+                <input type="number" id="price" placeholder="50" value="50">
+            </div>
+            
+            <div class="form-group">
+                <label>Payment Method</label>
+                <input type="text" id="payment" placeholder="PayPal" value="PayPal">
+            </div>
 
-            <p><strong>3. Run the test suite:</strong></p>
-            <pre>anchor test</pre>
-
-            <p><strong>Expected Output:</strong></p>
-            <ul>
-                <li>✅ <strong>5 passing</strong> tests in ~10 seconds</li>
-                <li>🟢 Escrow vault and order book initialization</li>
-                <li>🟢 Ask order placement with token custody</li>
-                <li>🟢 <strong>Bid matching with real seller</strong> (proves Phase 2A works!)</li>
-                <li>🟢 Order book state updates (partial fills)</li>
-                <li>🟢 Validation (rejects non-matching bids)</li>
-            </ul>
-
-            <p style="margin-top: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #28a745;">
-                <strong>✨ What This Proves:</strong> The matching algorithm you see in this UI is <strong>identical</strong> 
-                to the Rust code running on-chain. Tests verify real P2P matching, token custody, and partial fills.
-            </p>
+            <button class="btn btn-ask" onclick="placeAskOrder()">Place Ask</button>
+            <button class="btn btn-bid" onclick="placeBidOrder()">Place Bid</button>
+            <button class="btn btn-clear" onclick="clearAll()">Clear All</button>
         </div>
 
-        <div class="main-content">
-            <div style="display: flex; flex-direction: column; gap: 15px;">
-                <div class="panel">
-                    <h3>🟢 Place Ask Order (Seller)</h3>
-                    <div class="form-group">
-                        <label>Seller</label>
-                        <input type="text" id="askSeller" placeholder="Alice" value="Alice">
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <div class="form-group">
-                            <label>Amount</label>
-                            <input type="number" id="askAmount" placeholder="100" value="100">
-                        </div>
-                        <div class="form-group">
-                            <label>Price</label>
-                            <input type="number" id="askPrice" placeholder="50" value="50">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Payment</label>
-                        <input type="text" id="askPayment" placeholder="PayPal" value="PayPal">
-                    </div>
-                    <button class="btn btn-primary" onclick="placeAskOrder()">📤 Place Ask Order</button>
-                </div>
-
-                <div class="panel">
-                    <h3>🔵 Create Bid (Buyer)</h3>
-                    <div class="form-group">
-                        <label>Buyer</label>
-                        <input type="text" id="bidBuyer" placeholder="Bob" value="Bob">
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <div class="form-group">
-                            <label>Amount</label>
-                            <input type="number" id="bidAmount" placeholder="50" value="50">
-                        </div>
-                        <div class="form-group">
-                            <label>Max Price</label>
-                            <input type="number" id="bidPrice" placeholder="55" value="55">
-                        </div>
-                    </div>
-                    <button class="btn btn-secondary" onclick="createBid()">🎯 Create Bid & Match</button>
-                    <div class="stats">
-                        <div class="stat-box">
-                            <div class="stat-value" id="statOrders">0</div>
-                            <div class="stat-label">Orders</div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="stat-value" id="statMatches">0</div>
-                            <div class="stat-label">Matches</div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="stat-value" id="statVolume">0</div>
-                            <div class="stat-label">Volume</div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Order Book Panel -->
+        <div class="panel glass-panel order-book-panel">
+            <h3>Order Book</h3>
+            <div class="order-book" id="orderBook">
+                <div class="empty-state">No orders in the book</div>
             </div>
+        </div>
 
-            <div class="panel">
-                <h3>📖 Order Book (Live State)</h3>
-                <p style="color: #6c757d; margin-bottom: 10px; font-size: 0.9em;">
-                    <strong>Sorted by:</strong> Price (↑) → Time (↑)
-                </p>
-                <div class="order-book" id="orderBook">
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-                        </svg>
-                        <p>No orders in the book yet</p>
-                        <p style="font-size: 0.85em;">Place an ask order to get started</p>
-                    </div>
-                </div>
-                <button class="btn btn-danger" onclick="clearOrderBook()">🗑️ Clear Order Book</button>
+        <!-- CritBit Graph Panel -->
+        <div class="panel glass-panel critbit-graph-panel">
+            <h3>CritBit Tree Graph</h3>
+            <div class="svg-container">
+                <svg id="critbitSVG"></svg>
             </div>
+        </div>
 
-            <div class="panel log-panel">
-                <h3>📋 Transaction Log</h3>
-                <div class="log-container" id="logContainer">
-                    <div class="log-entry info">System initialized. Ready to process orders.</div>
-                </div>
+        <!-- Hierarchical Tree Panel -->
+        <div class="panel glass-panel hierarchy-panel">
+            <h3>Tree Structure</h3>
+            <div class="tree-hierarchy" id="treeHierarchy">
+                <div class="empty-state">Tree visualization will appear here</div>
+            </div>
+        </div>
+
+        <!-- Transaction Log Panel -->
+        <div class="panel glass-panel log-panel">
+            <h3>Transaction Log</h3>
+            <div class="log-container" id="logContainer">
+                <div class="log-entry info">[System] Initialized. Ready to process orders.</div>
             </div>
         </div>
     </div>
 
     <script>
-        // Global state matching the Rust OrderBook struct
+        // ================= CritBit Tree Implementation =================
+        const EMPTY = 0xFFFFFFFF;
+
+        class CritBitNode {
+            constructor(isLeaf = false) {
+                this.key = 0;
+                this.orderIndex = 0;
+                this.parent = EMPTY;
+                this.left = EMPTY;
+                this.right = EMPTY;
+                this.prefixLen = 0;
+                this.isLeaf = isLeaf;
+            }
+
+            static newLeaf(key, orderIndex) {
+                const node = new CritBitNode(true);
+                node.key = key;
+                node.orderIndex = orderIndex;
+                return node;
+            }
+
+            static newInner(prefixLen) {
+                const node = new CritBitNode(false);
+                node.prefixLen = prefixLen;
+                return node;
+            }
+        }
+
+        class CritBitTree {
+            constructor(capacity = 100) {
+                this.nodes = [];
+                for (let i = 0; i < capacity; i++) {
+                    this.nodes.push(new CritBitNode());
+                }
+                this.root = EMPTY;
+                this.leafCount = 0;
+                this.freeList = 0;
+            }
+
+            findCriticalBit(key1, key2) {
+                const xor = key1 ^ key2;
+                if (xor === 0) return 64;
+                return 63 - Math.clz32(xor);
+            }
+
+            getBit(key, bitPos) {
+                if (bitPos >= 64) return false;
+                return ((key >> bitPos) & 1) === 1;
+            }
+
+            allocNode() {
+                if (this.freeList >= this.nodes.length) {
+                    throw new Error('OrderBook full');
+                }
+                return this.freeList++;
+            }
+
+            insert(key, orderIndex) {
+                // Empty tree case
+                if (this.root === EMPTY) {
+                    const nodeIndex = this.allocNode();
+                    this.nodes[nodeIndex] = CritBitNode.newLeaf(key, orderIndex);
+                    this.root = nodeIndex;
+                    this.leafCount = 1;
+                    log(`[CritBit] Inserted root node at key ${key}`, 'success');
+                    return nodeIndex;
+                }
+
+                // Find insertion point
+                let current = this.root;
+                while (true) {
+                    const node = this.nodes[current];
+
+                    if (node.isLeaf) {
+                        if (node.key === key) {
+                            // Update existing
+                            this.nodes[current].orderIndex = orderIndex;
+                            log(`[CritBit] Updated existing key ${key}`, 'info');
+                            return current;
+                        }
+
+                        // Find critical bit
+                        const critBit = this.findCriticalBit(key, node.key);
+                        log(`[CritBit] Critical bit found at position ${critBit}`, 'info');
+
+                        // Create new inner node
+                        const innerIndex = this.allocNode();
+                        this.nodes[innerIndex] = CritBitNode.newInner(critBit);
+
+                        // Create new leaf
+                        const leafIndex = this.allocNode();
+                        this.nodes[leafIndex] = CritBitNode.newLeaf(key, orderIndex);
+
+                        // Determine sides
+                        const newLeafOnRight = this.getBit(key, critBit);
+
+                        if (newLeafOnRight) {
+                            this.nodes[innerIndex].left = current;
+                            this.nodes[innerIndex].right = leafIndex;
+                        } else {
+                            this.nodes[innerIndex].left = leafIndex;
+                            this.nodes[innerIndex].right = current;
+                        }
+
+                        // Update parent pointers
+                        const oldParent = node.parent;
+                        this.nodes[current].parent = innerIndex;
+                        this.nodes[leafIndex].parent = innerIndex;
+                        this.nodes[innerIndex].parent = oldParent;
+
+                        // Update parent's child pointer
+                        if (oldParent === EMPTY) {
+                            this.root = innerIndex;
+                        } else {
+                            const parentNode = this.nodes[oldParent];
+                            if (parentNode.left === current) {
+                                this.nodes[oldParent].left = innerIndex;
+                            } else {
+                                this.nodes[oldParent].right = innerIndex;
+                            }
+                        }
+
+                        this.leafCount++;
+                        log(`[CritBit] Inserted new leaf at key ${key}`, 'success');
+                        return leafIndex;
+                    }
+
+                    // Inner node - traverse down
+                    if (this.getBit(key, node.prefixLen)) {
+                        current = node.right;
+                    } else {
+                        current = node.left;
+                    }
+                }
+            }
+
+            remove(key) {
+                if (this.root === EMPTY) {
+                    throw new Error('Order not found');
+                }
+
+                let current = this.root;
+                while (true) {
+                    const node = this.nodes[current];
+
+                    if (node.isLeaf) {
+                        if (node.key !== key) {
+                            throw new Error('Order not found');
+                        }
+
+                        const orderIndex = node.orderIndex;
+
+                        // Single node tree
+                        if (node.parent === EMPTY) {
+                            this.root = EMPTY;
+                            this.leafCount = 0;
+                            log(`[CritBit] Removed last node (key ${key})`, 'warning');
+                            return orderIndex;
+                        }
+
+                        // Get parent and sibling
+                        const parentIndex = node.parent;
+                        const parent = this.nodes[parentIndex];
+                        const siblingIndex = parent.left === current ? parent.right : parent.left;
+
+                        // Update grandparent
+                        if (parent.parent === EMPTY) {
+                            this.root = siblingIndex;
+                            this.nodes[siblingIndex].parent = EMPTY;
+                        } else {
+                            const grandparentIndex = parent.parent;
+                            const grandparent = this.nodes[grandparentIndex];
+                            if (grandparent.left === parentIndex) {
+                                this.nodes[grandparentIndex].left = siblingIndex;
+                            } else {
+                                this.nodes[grandparentIndex].right = siblingIndex;
+                            }
+                            this.nodes[siblingIndex].parent = grandparentIndex;
+                        }
+
+                        this.leafCount--;
+                        log(`[CritBit] Removed node at key ${key}`, 'warning');
+                        return orderIndex;
+                    }
+
+                    // Traverse down
+                    if (this.getBit(key, node.prefixLen)) {
+                        current = node.right;
+                    } else {
+                        current = node.left;
+                    }
+                }
+            }
+
+            find(key) {
+                if (this.root === EMPTY) return null;
+
+                let current = this.root;
+                const path = [];
+
+                while (true) {
+                    const node = this.nodes[current];
+                    path.push(current);
+
+                    if (node.isLeaf) {
+                        return node.key === key ? { node, path } : null;
+                    }
+
+                    if (this.getBit(key, node.prefixLen)) {
+                        current = node.right;
+                    } else {
+                        current = node.left;
+                    }
+                }
+            }
+
+            min() {
+                if (this.root === EMPTY) return null;
+                return this.findMinInSubtree(this.root);
+            }
+
+            findMinInSubtree(nodeIndex) {
+                if (nodeIndex === EMPTY) return null;
+
+                const node = this.nodes[nodeIndex];
+
+                if (node.isLeaf) {
+                    return { key: node.key, nodeIndex };
+                }
+
+                // Recursively check both children
+                const leftMin = this.findMinInSubtree(node.left);
+                const rightMin = this.findMinInSubtree(node.right);
+
+                if (!leftMin) return rightMin;
+                if (!rightMin) return leftMin;
+
+                return leftMin.key < rightMin.key ? leftMin : rightMin;
+            }
+
+            max() {
+                if (this.root === EMPTY) return null;
+                return this.findMaxInSubtree(this.root);
+            }
+
+            findMaxInSubtree(nodeIndex) {
+                if (nodeIndex === EMPTY) return null;
+
+                const node = this.nodes[nodeIndex];
+
+                if (node.isLeaf) {
+                    return { key: node.key, nodeIndex };
+                }
+
+                // Recursively check both children
+                const leftMax = this.findMaxInSubtree(node.left);
+                const rightMax = this.findMaxInSubtree(node.right);
+
+                if (!leftMax) return rightMax;
+                if (!rightMax) return leftMax;
+
+                return leftMax.key > rightMax.key ? leftMax : rightMax;
+            }
+        }
+
+        // ================= Graph Visualizer =================
+        class CritBitGraphVisualizer {
+            constructor(svgElement) {
+                this.svg = svgElement;
+                this.width = 0;
+                this.height = 0;
+                this.updateDimensions();
+            }
+
+            updateDimensions() {
+                const container = this.svg.parentElement;
+                this.width = container.clientWidth;
+                this.height = container.clientHeight;
+            }
+
+            renderTree(critbitTree) {
+                this.svg.innerHTML = '';
+                this.updateDimensions();
+
+                if (critbitTree.root === EMPTY) {
+                    return;
+                }
+
+                // Calculate layout
+                const positions = this.calculatePositions(critbitTree);
+
+                // Draw edges first
+                this.drawEdges(critbitTree, positions);
+
+                // Draw nodes
+                this.drawNodes(critbitTree, positions);
+            }
+
+            calculatePositions(tree) {
+                const positions = {};
+                const levels = {};
+
+                const traverse = (nodeIndex, level, leftBound, rightBound) => {
+                    if (nodeIndex === EMPTY) return;
+
+                    const node = tree.nodes[nodeIndex];
+                    const x = (leftBound + rightBound) / 2;
+                    const y = 50 + level * 80;
+
+                    positions[nodeIndex] = { x, y };
+
+                    if (!node.isLeaf) {
+                        const mid = (leftBound + rightBound) / 2;
+                        traverse(node.left, level + 1, leftBound, mid);
+                        traverse(node.right, level + 1, mid, rightBound);
+                    }
+                };
+
+                traverse(tree.root, 0, 0, this.width);
+                return positions;
+            }
+
+            drawEdges(tree, positions) {
+                const traverse = (nodeIndex) => {
+                    if (nodeIndex === EMPTY) return;
+
+                    const node = tree.nodes[nodeIndex];
+                    const pos = positions[nodeIndex];
+
+                    if (!node.isLeaf) {
+                        if (node.left !== EMPTY) {
+                            const leftPos = positions[node.left];
+                            this.drawEdge(pos.x, pos.y, leftPos.x, leftPos.y);
+                            traverse(node.left);
+                        }
+                        if (node.right !== EMPTY) {
+                            const rightPos = positions[node.right];
+                            this.drawEdge(pos.x, pos.y, rightPos.x, rightPos.y);
+                            traverse(node.right);
+                        }
+                    }
+                };
+
+                traverse(tree.root);
+            }
+
+            drawEdge(x1, y1, x2, y2) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('class', 'tree-edge');
+                this.svg.appendChild(line);
+            }
+
+            drawNodes(tree, positions) {
+                const traverse = (nodeIndex) => {
+                    if (nodeIndex === EMPTY) return;
+
+                    const node = tree.nodes[nodeIndex];
+                    const pos = positions[nodeIndex];
+
+                    if (node.isLeaf) {
+                        this.drawLeafNode(pos.x, pos.y, node.key, nodeIndex === tree.root);
+                    } else {
+                        this.drawInternalNode(pos.x, pos.y, node.prefixLen, nodeIndex === tree.root);
+                    }
+
+                    if (!node.isLeaf) {
+                        traverse(node.left);
+                        traverse(node.right);
+                    }
+                };
+
+                traverse(tree.root);
+            }
+
+            drawLeafNode(x, y, key, isRoot) {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', 'tree-node-svg');
+
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', x - 30);
+                rect.setAttribute('y', y - 15);
+                rect.setAttribute('width', 60);
+                rect.setAttribute('height', 30);
+                rect.setAttribute('rx', 4);
+                rect.setAttribute('class', isRoot ? 'tree-node-root' : 'tree-node-leaf');
+                g.appendChild(rect);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', x);
+                text.setAttribute('y', y + 5);
+                text.setAttribute('class', 'tree-label');
+                text.textContent = `$${key}`;
+                g.appendChild(text);
+
+                this.svg.appendChild(g);
+            }
+
+            drawInternalNode(x, y, prefixLen, isRoot) {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', 'tree-node-svg');
+
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', x);
+                circle.setAttribute('cy', y);
+                circle.setAttribute('r', 20);
+                circle.setAttribute('class', isRoot ? 'tree-node-root' : 'tree-node-internal');
+                g.appendChild(circle);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', x);
+                text.setAttribute('y', y + 5);
+                text.setAttribute('class', 'tree-label');
+                text.textContent = `b${prefixLen}`;
+                g.appendChild(text);
+
+                this.svg.appendChild(g);
+            }
+        }
+
+        // ================= Hierarchical View =================
+        class HierarchicalView {
+            constructor(container) {
+                this.container = container;
+            }
+
+            renderTree(critbitTree) {
+                this.container.innerHTML = '';
+
+                if (critbitTree.root === EMPTY) {
+                    this.container.innerHTML = '<div class="empty-state">Tree visualization will appear here</div>';
+                    return;
+                }
+
+                const html = this.renderNode(critbitTree, critbitTree.root, true);
+                this.container.innerHTML = html;
+            }
+
+            renderNode(tree, nodeIndex, isRoot = false) {
+                if (nodeIndex === EMPTY) return '';
+
+                const node = tree.nodes[nodeIndex];
+                const nodeClass = isRoot ? 'root' : (node.isLeaf ? 'leaf' : 'internal');
+
+                let html = `<div class="tree-node-hier ${nodeClass}">`;
+
+                if (node.isLeaf) {
+                    html += `<div class="node-label">Leaf: $${node.key}</div>`;
+                    html += `<div class="node-details">Order: #${node.orderIndex}</div>`;
+                } else {
+                    html += `<div class="node-label">Internal: bit ${node.prefixLen}</div>`;
+                    html += `<div class="tree-children">`;
+                    if (node.left !== EMPTY) {
+                        html += this.renderNode(tree, node.left);
+                    }
+                    if (node.right !== EMPTY) {
+                        html += this.renderNode(tree, node.right);
+                    }
+                    html += `</div>`;
+                }
+
+                html += `</div>`;
+                return html;
+            }
+        }
+
+        // ================= Global State =================
         let orderBook = {
-            token_mint: "TokenMint123",
             orders: [],
             last_order_id: 0
         };
 
+        let critbitTree = new CritBitTree(100);
+        let graphVisualizer = new CritBitGraphVisualizer(document.getElementById('critbitSVG'));
+        let hierarchyView = new HierarchicalView(document.getElementById('treeHierarchy'));
+
         let totalMatches = 0;
         let totalVolume = 0;
 
+        // ================= Logging =================
         function log(message, type = 'info') {
             const logContainer = document.getElementById('logContainer');
             const entry = document.createElement('div');
@@ -511,6 +1048,7 @@ yarn install</pre>
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
+        // ================= UI Updates =================
         function updateStats() {
             document.getElementById('statOrders').textContent = orderBook.orders.length;
             document.getElementById('statMatches').textContent = totalMatches;
@@ -519,202 +1057,166 @@ yarn install</pre>
 
         function renderOrderBook() {
             const container = document.getElementById('orderBook');
-            
+
             if (orderBook.orders.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-                        </svg>
-                        <p>No orders in the book yet</p>
-                        <p style="font-size: 0.85em;">Place an ask order to get started</p>
-                    </div>
-                `;
+                container.innerHTML = '<div class="empty-state">No orders in the book</div>';
                 return;
             }
 
-            container.innerHTML = orderBook.orders.map((order, index) => `
-                <div class="order-item" id="order-${index}">
+            const sortedOrders = [...orderBook.orders].sort((a, b) => {
+                const priceCmp = a.price - b.price;
+                if (priceCmp !== 0) return priceCmp;
+                return a.created_at - b.created_at;
+            });
+
+            container.innerHTML = sortedOrders.map(order => `
+                <div class="order-item ${order.side}">
                     <div class="order-meta">
-                        <span><strong>Order #${order.order_id}</strong></span>
-                        <span style="color: #28a745; font-weight: bold;">$${order.price}/token</span>
+                        <span><strong>#${order.order_id}</strong></span>
+                        <span class="order-price ${order.side}">$${order.price}</span>
                     </div>
                     <div class="order-details">
-                        Seller: ${order.seller} | Amount: ${order.amount} tokens | ${order.payment_method}
-                    </div>
-                    <div class="order-details" style="font-size: 0.8em; margin-top: 5px;">
-                        Created: ${new Date(order.created_at).toLocaleTimeString()}
+                        ${order.side.toUpperCase()}: ${order.trader} | ${order.amount} tokens
                     </div>
                 </div>
             `).join('');
         }
 
-        function placeAskOrder() {
-            const seller = document.getElementById('askSeller').value.trim();
-            const amount = parseInt(document.getElementById('askAmount').value);
-            const price = parseInt(document.getElementById('askPrice').value);
-            const payment_method = document.getElementById('askPayment').value.trim();
+        function updateVisualization() {
+            graphVisualizer.renderTree(critbitTree);
+            hierarchyView.renderTree(critbitTree);
+        }
 
-            if (!seller || !amount || !price || !payment_method) {
-                log('❌ Error: All fields are required', 'error');
+        // ================= Order Placement =================
+        function placeAskOrder() {
+            const trader = document.getElementById('trader').value.trim();
+            const amount = parseInt(document.getElementById('amount').value);
+            const price = parseInt(document.getElementById('price').value);
+
+            if (!trader || !amount || !price) {
+                log('[Error] All fields are required', 'error');
                 return;
             }
 
             if (amount <= 0 || price <= 0) {
-                log('❌ Error: Amount and price must be positive', 'error');
+                log('[Error] Amount and price must be positive', 'error');
                 return;
             }
 
-            // Simulate the Rust function: place_ask_order
-            log(`📥 Market: Placing ask order - seller: ${seller}, amount: ${amount}, price: ${price}, payment_method: ${payment_method}`, 'info');
-            
-            // Simulate token transfer to escrow
-            log(`💰 Market: ${amount} tokens transferred to escrow vault`, 'success');
+            orderBook.last_order_id++;
 
-            // Store order in order book (matching Rust implementation)
-            orderBook.last_order_id += 1;
-            
-            const order_id = orderBook.last_order_id;
-            const askOrder = {
-                seller,
+            const order = {
+                trader,
                 amount,
                 price,
-                payment_method,
+                side: 'ask',
                 created_at: Date.now(),
-                order_id
+                order_id: orderBook.last_order_id
             };
 
-            orderBook.orders.push(askOrder);
-            
-            log(`✅ Market: Ask order stored in order book with ID: ${order_id}`, 'success');
-            log(`📊 Market: Order book now has ${orderBook.orders.length} orders`, 'info');
+            orderBook.orders.push(order);
+
+            // Insert into CritBit tree
+            try {
+                critbitTree.insert(price, orderBook.last_order_id);
+                log(`[Market] Ask order #${order.order_id}: ${amount} @ $${price}`, 'success');
+            } catch (e) {
+                log(`[Error] ${e.message}`, 'error');
+            }
 
             renderOrderBook();
+            updateVisualization();
             updateStats();
         }
 
-        function createBid() {
-            const buyer = document.getElementById('bidBuyer').value.trim();
-            const amount = parseInt(document.getElementById('bidAmount').value);
-            const price = parseInt(document.getElementById('bidPrice').value);
+        function placeBidOrder() {
+            const trader = document.getElementById('trader').value.trim();
+            const amount = parseInt(document.getElementById('amount').value);
+            const price = parseInt(document.getElementById('price').value);
 
-            if (!buyer || !amount || !price) {
-                log('❌ Error: All fields are required', 'error');
+            if (!trader || !amount || !price) {
+                log('[Error] All fields are required', 'error');
                 return;
             }
 
             if (amount <= 0 || price <= 0) {
-                log('❌ Error: Amount and price must be positive', 'error');
+                log('[Error] Amount and price must be positive', 'error');
                 return;
             }
 
-            // Simulate the Rust function: create_bid
-            log(`🎯 Market: Received bid - amount: ${amount}, price: ${price}, trader: ${buyer}`, 'info');
+            log(`[Market] Bid order: ${amount} @ max $${price}`, 'info');
 
-            // CORE ALGORITHM: Sort by price (ascending), then by time (ascending)
-            log(`🔧 Executing price-time priority sort...`, 'info');
-            orderBook.orders.sort((a, b) => {
-                // First by price (ascending - cheapest first)
-                const priceCmp = a.price - b.price;
-                if (priceCmp !== 0) return priceCmp;
-                // Then by time (ascending - oldest first)
-                return a.created_at - b.created_at;
-            });
+            // Find best ask
+            const minResult = critbitTree.min();
+            if (minResult) {
+                log(`[CritBit] Best ask found at $${minResult.key}`, 'info');
+            }
 
-            log(`📖 Market: Order book has ${orderBook.orders.length} orders to match against`, 'info');
+            // Find matching asks
+            const matchingAsks = orderBook.orders
+                .filter(order => order.side === 'ask' && order.price <= price)
+                .sort((a, b) => {
+                    const priceCmp = a.price - b.price;
+                    if (priceCmp !== 0) return priceCmp;
+                    return a.created_at - b.created_at;
+                });
+
+            if (matchingAsks.length === 0) {
+                log('[Market] No matching orders found', 'error');
+                return;
+            }
 
             let remainingAmount = amount;
             let matchedOrders = [];
-            let ordersToRemove = [];
 
-            // Find matching orders
-            for (let i = 0; i < orderBook.orders.length && remainingAmount > 0; i++) {
-                const askOrder = orderBook.orders[i];
-                
-                // Check if this ask order can be matched (ask price <= bid price)
-                if (askOrder.price <= price) {
-                    const fillAmount = Math.min(remainingAmount, askOrder.amount);
-                    
-                    log(`🔄 Market: Matching bid with ask - ask_price: ${askOrder.price}, ask_amount: ${askOrder.amount}, fill_amount: ${fillAmount}`, 'warning');
-                    
-                    // Simulate CPI to OrderStore
-                    log(`📞 CPI: create_matched_order(amount: ${fillAmount}, price: ${askOrder.price}, buyer: ${buyer}, seller: ${askOrder.seller})`, 'success');
-                    
-                    matchedOrders.push({ index: i, fillAmount, askOrder });
-                    remainingAmount -= fillAmount;
-                    totalMatches++;
-                    totalVolume += fillAmount;
-                    
-                    // Mark order as matched in UI
-                    setTimeout(() => {
-                        const orderElement = document.getElementById(`order-${i}`);
-                        if (orderElement) {
-                            orderElement.classList.add('matched');
+            for (let i = 0; i < matchingAsks.length && remainingAmount > 0; i++) {
+                const askOrder = matchingAsks[i];
+                const fillAmount = Math.min(remainingAmount, askOrder.amount);
+
+                log(`[Match] ${fillAmount} tokens @ $${askOrder.price}`, 'warning');
+
+                matchedOrders.push({ askOrder, fillAmount });
+                remainingAmount -= fillAmount;
+                totalMatches++;
+                totalVolume += fillAmount;
+
+                const orderIndex = orderBook.orders.findIndex(o => o.order_id === askOrder.order_id);
+                if (orderIndex !== -1) {
+                    orderBook.orders[orderIndex].amount -= fillAmount;
+                    if (orderBook.orders[orderIndex].amount <= 0) {
+                        // Remove from tree
+                        try {
+                            critbitTree.remove(askOrder.price);
+                        } catch (e) {
+                            log(`[Error] ${e.message}`, 'error');
                         }
-                    }, 100);
-                    
-                    // If fully filled, mark for removal
-                    if (fillAmount === askOrder.amount) {
-                        ordersToRemove.push(i);
+                        orderBook.orders.splice(orderIndex, 1);
                     }
-                    
-                    log(`✅ Market: Created match - ${fillAmount} tokens at price ${askOrder.price}`, 'success');
-                } else {
-                    log(`⏭️  Ask order #${askOrder.order_id} price (${askOrder.price}) > bid price (${price}), skipping`, 'info');
                 }
             }
 
-            if (matchedOrders.length === 0) {
-                log('❌ Market: No matching orders found for bid', 'error');
-                return;
-            }
+            log(`[Market] ${matchedOrders.length} orders matched, volume: ${totalVolume}`, 'success');
 
-            // Update order book state
-            // Remove fully filled orders (in reverse to maintain indices)
-            for (let i = ordersToRemove.length - 1; i >= 0; i--) {
-                const index = ordersToRemove[i];
-                setTimeout(() => {
-                    const orderElement = document.getElementById(`order-${index}`);
-                    if (orderElement) {
-                        orderElement.classList.add('removed');
-                        setTimeout(() => {
-                            orderBook.orders.splice(index, 1);
-                            renderOrderBook();
-                            updateStats();
-                        }, 500);
-                    }
-                }, 200);
-            }
-
-            // Update partially filled orders
-            matchedOrders.forEach(({ index, fillAmount, askOrder }) => {
-                if (askOrder.amount > fillAmount) {
-                    orderBook.orders[index].amount -= fillAmount;
-                    log(`📝 Updated order #${askOrder.order_id}: ${askOrder.amount} → ${orderBook.orders[index].amount} tokens`, 'info');
-                }
-            });
-
-            log(`🎉 Market: Matching completed - ${matchedOrders.length} orders matched`, 'success');
-            log(`📊 Market: Order book now has ${orderBook.orders.length - ordersToRemove.length} remaining orders`, 'info');
-
-            setTimeout(() => {
-                renderOrderBook();
-                updateStats();
-            }, 600);
+            renderOrderBook();
+            updateVisualization();
+            updateStats();
         }
 
-        function clearOrderBook() {
+        function clearAll() {
             orderBook.orders = [];
             orderBook.last_order_id = 0;
             totalMatches = 0;
             totalVolume = 0;
-            log('🗑️  Order book cleared', 'warning');
+            critbitTree = new CritBitTree(100);
+            log('[System] All orders cleared', 'warning');
             renderOrderBook();
+            updateVisualization();
             updateStats();
         }
 
         // Initialize
         updateStats();
+        window.addEventListener('resize', () => updateVisualization());
     </script>
 </body>
 </html>

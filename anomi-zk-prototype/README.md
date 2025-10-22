@@ -1,115 +1,73 @@
-# ZK2P Protocol - Phase 2B Implementation
+# Anomi ZK Prototype
 
-Zero-knowledge peer-to-peer settlement with production matching engine and CritBit-based order book.
+Solana-based order matching engine with CritBit tree data structure.
 
-## 🎮 Interactive Demo
-
-**See the matching algorithm in action!**
+## Build & Test
 
 ```bash
-cd demo-ui
-python3 -m http.server 8080
-# Visit: http://localhost:8080
-```
-
-The demo visualizes the exact price-time priority algorithm from the Rust contract. Place ask orders, submit bids, and watch real-time matching with partial fills.
-
-## Quick Start
-
-```bash
-yarn install
+# Build programs
 anchor build
 
-# Run unit tests (isolated components)
+# Run unit tests
 cargo test --package market --lib order::tests
 cargo test --package market --lib order_book::tests
 cargo test --package market --lib critbit::tests
 
-# Run integration tests (full workflows)
-anchor test -- --grep "Phase 2A"  # Legacy matching engine
-anchor test -- --grep "Phase 2B"  # New OrderBookV2
+# Run integration tests
+anchor test
 ```
 
-## Current Test Results
+## Test Results
 
 **Unit Tests (10/10 passing):**
-```
-Order Tests (4/4):
-  ✔ test_order_creation
-  ✔ test_order_fill  
-  ✔ test_unique_order_ids
-  ✔ test_order_queue
+- Order structure: 4/4
+- OrderBook operations: 3/3
+- CritBit tree: 3/3
 
-OrderBook Tests (3/3):
-  ✔ test_order_book_insert
-  ✔ test_order_book_remove
-  ✔ test_order_book_best_price
-
-CritBit Tests (3/3):
-  ✔ test_critbit_insert_remove
-  ✔ test_critbit_min_max
-  ✔ test_critbit_traversal
-```
-
-## Phase 2B Features
-
-- **Dual Order Book**: Phase 2A (Vec<AskOrder>) + Phase 2B (CritBit + Order)
-- **CritBit Trees**: O(log n) price-level operations, 50 price levels max
-- **Order Structure**: Bidirectional, 5 order types, partial fill tracking
-- **Educational Tools**: CritBit explorer, PDA analyzer
-- **Side-by-Side**: Both systems work independently
-
-## Architecture
-
-```
-Seller → place_ask_order() → Tokens to Escrow → Order Book
-Buyer → create_bid() → Match from Order Book → CPI to OrderStore
-OrderProcessor → finalize_trade(zk_proof) → Release Escrow
-```
+**Integration Tests (7/7 passing):**
+- Phase 2A matching: 4/4
+- Phase 2B OrderBookV2: 3/3
 
 ## Programs
 
-- **Market**: Order book + escrow + matching
-- **OrderStore**: Persistent matched order state
-- **OrderProcessor**: ZK-gated settlement
+### Market
+Order matching with CritBit-based order book.
 
-See main [README](../README.md) for protocol details.
+**Key Instructions:**
+- `place_ask_order` - Create sell order with token escrow
+- `place_bid_order` - Match buy order against asks
+- `initialize_order_book_v2` - Setup CritBit tree
+- `place_limit_order_v2` - New order system
 
-```
-Phase 2A: Matching Engine
-  ✓ Initializes escrow vault and order book
-  ✓ Places ask order and stores it in order book
-  ✓ Matches bid against ask order (CORE TEST)
-  ✓ Rejects bid when no matching orders exist
+### OrderStore
+Persistent matched order storage.
 
-4 passing
-```
+### OrderProcessor
+ZK proof validation and settlement (stubbed).
 
-## Project Structure
+## Demo UI
 
-```
-anomi-zk-prototype/
-├── programs/
-│   ├── market/          # Order book & matching (Phase 2A ✅)
-│   ├── order-store/     # Matched order storage
-│   └── order-processor/ # ZK validation (stubbed)
-├── tests/
-│   ├── phase2a-matching.ts  # Phase 2A tests ✅
-│   ├── escrow.ts            # Phase 0.5 tests
-│   └── anomi-zk-prototype.ts
-└── Anchor.toml
+```bash
+cd demo-ui
+python -m http.server 8080 --bind 127.0.0.1
 ```
 
-## Development Status
+Open http://127.0.0.1:8080 to visualize CritBit tree operations.
 
-**Current**: Milestone 4 - OrderBookV2 Integration (Phase 2B)
-**Completed**: Milestones 1-3 (Architecture, CritBit, Order Structure)
-**Next**: Milestone 5 (Cancel Orders), Milestone 6 (Complete Migration)
+## Implementation
 
-**Educational Approach:**
-- Each component testable in isolation
-- Visual tools for understanding CritBit trees
-- Side-by-side Phase 2A/2B comparison
-- Comprehensive documentation in `docs/architecture/`
+**CritBit Tree (`critbit.rs`):**
+- 429 lines of production code
+- O(log n) insert, remove, find operations
+- Bit-pattern routing for efficient price levels
 
-See `workflow_ANOMI.md` for complete roadmap and parent `README.md` for protocol details.
+**Order Structure (`order.rs`):**
+- 122 bytes fixed-size
+- 5 order types: Limit, Market, Post-Only, IOC, FOK
+- Unique u128 order IDs
+- Partial fill tracking
+
+**OrderBookV2 (`order_book.rs`):**
+- Separate CritBit trees for bids/asks
+- 50 price levels (fits 10KB PDA limit)
+- FIFO queues at each price level
