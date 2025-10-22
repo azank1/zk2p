@@ -24,9 +24,8 @@ anchor test
 - OrderBook operations: 3/3
 - CritBit tree: 3/3
 
-**Integration Tests (7/7 passing):**
-- Phase 2A matching: 4/4
-- Phase 2B OrderBookV2: 3/3
+**Integration Tests (6/6 passing):**
+- Phase 2 OrderBook: 6/6 (includes cancel order tests)
 
 ## Programs
 
@@ -34,10 +33,10 @@ anchor test
 Order matching with CritBit-based order book.
 
 **Key Instructions:**
-- `place_ask_order` - Create sell order with token escrow
-- `place_bid_order` - Match buy order against asks
+- `initialize_market` - Setup market account
 - `initialize_order_book_v2` - Setup CritBit tree
-- `place_limit_order_v2` - New order system
+- `place_limit_order_v2` - Place limit order with escrow
+- `cancel_order` - Cancel order and return tokens
 
 ### OrderStore
 Persistent matched order storage.
@@ -67,7 +66,7 @@ Open http://127.0.0.1:8080 to visualize CritBit tree operations.
 - Unique u128 order IDs
 - Partial fill tracking
 
-**OrderBookV2 (`order_book.rs`):**
+**OrderBook (`order_book.rs`):**
 - Separate CritBit trees for bids/asks
 - 50 price levels (fits 10KB PDA limit)
 - FIFO queues at each price level

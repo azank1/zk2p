@@ -10,7 +10,7 @@ import {
 import { expect } from "chai";
 import BN from "bn.js";
 
-describe("Phase 2B: OrderBookV2 Integration", () => {
+describe("Phase 2: OrderBook with CritBit Integration", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   
   const provider = anchor.AnchorProvider.env();
@@ -26,15 +26,12 @@ describe("Phase 2B: OrderBookV2 Integration", () => {
   let escrowVault: PublicKey;
   let escrowAuthority: PublicKey;
   
-  // Phase 2B PDAs
+  // PDAs
   let market: PublicKey;
-  let orderBookV2: PublicKey;
-  
-  // Phase 2A PDAs (for comparison)
-  let orderBookV1: PublicKey;
+  let orderBook: PublicKey;
   
   before(async () => {
-    console.log("\n🔧 Setting up Phase 2B test environment...");
+    console.log("\n🔧 Setting up Phase 2 test environment...");
     
     seller1 = Keypair.generate();
     seller2 = Keypair.generate();
@@ -103,18 +100,12 @@ describe("Phase 2B: OrderBookV2 Integration", () => {
       marketProgram.programId
     );
     
-    [orderBookV2] = PublicKey.findProgramAddressSync(
-      [Buffer.from("order_book_v2"), tokenMint.toBuffer()],
-      marketProgram.programId
-    );
-    
-    // Derive Phase 2A PDAs
-    [orderBookV1] = PublicKey.findProgramAddressSync(
+    [orderBook] = PublicKey.findProgramAddressSync(
       [Buffer.from("order_book"), tokenMint.toBuffer()],
       marketProgram.programId
     );
     
-    // Shared escrow (both versions use same escrow)
+    // Shared escrow
     [escrowVault] = PublicKey.findProgramAddressSync(
       [Buffer.from("escrow_vault"), tokenMint.toBuffer()],
       marketProgram.programId
@@ -168,7 +159,7 @@ describe("Phase 2B: OrderBookV2 Integration", () => {
     await marketProgram.methods
       .initializeOrderBookV2()
       .accounts({
-        orderBookV2,
+        orderBook,
         market,
         tokenMint,
         payer: provider.wallet.publicKey,
@@ -208,7 +199,7 @@ describe("Phase 2B: OrderBookV2 Integration", () => {
         ownerTokenAccount: seller1TokenAccount,
         escrowVault,
         market,
-        orderBookV2,
+        orderBook,
         tokenMint,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -257,7 +248,7 @@ describe("Phase 2B: OrderBookV2 Integration", () => {
         ownerTokenAccount: seller2TokenAccount,
         escrowVault,
         market,
-        orderBookV2,
+        orderBook,
         tokenMint,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -283,7 +274,7 @@ describe("Phase 2B: OrderBookV2 Integration", () => {
         ownerTokenAccount: seller1TokenAccount,
         escrowVault,
         market,
-        orderBookV2,
+        orderBook,
         tokenMint,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -372,7 +363,7 @@ describe("Phase 2B: OrderBookV2 Integration", () => {
             ownerTokenAccount: i % 2 === 0 ? seller1TokenAccount : seller2TokenAccount,
             escrowVault,
             market,
-            orderBookV2,
+            orderBook,
             tokenMint,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
@@ -435,7 +426,7 @@ describe("Phase 2B: OrderBookV2 Integration", () => {
         ownerTokenAccount: seller1TokenAccount,
         escrowVault,
         market,
-        orderBookV2,
+        orderBook,
         tokenMint,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
