@@ -2,13 +2,44 @@
 
 Interactive visualization of CritBit tree-based order matching.
 
-## Run Locally
+## Quick Start
 
-```bash
+### Windows
+
+**Option 1: Double-click the script**
+- Navigate to `demo-ui` folder
+- Double-click `start-server.bat`
+
+**Option 2: PowerShell**
+```powershell
+cd anomi-zk-prototype\demo-ui
+.\start-server.ps1
+```
+
+**Option 3: Command Prompt**
+```cmd
+cd anomi-zk-prototype\demo-ui
 python -m http.server 8080 --bind 127.0.0.1
 ```
 
-Open http://127.0.0.1:8080 in your browser.
+### Linux/Mac
+
+```bash
+cd anomi-zk-prototype/demo-ui
+python3 -m http.server 8080 --bind 127.0.0.1
+```
+
+### Access the UI
+
+Open your browser to: **http://127.0.0.1:8080**
+
+**Important:** Make sure to:
+1. Run the command from inside the `demo-ui` directory
+2. Navigate to `http://127.0.0.1:8080` (not just `http://127.0.0.1:8080/`)
+
+### Stop the Server
+
+Press `Ctrl+C` in the terminal
 
 ## Features
 

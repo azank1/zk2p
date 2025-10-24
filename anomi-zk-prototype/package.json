@@ -2,7 +2,15 @@
   "license": "ISC",
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
-    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
+    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
+    "check-deps": "powershell -File scripts/check-dependencies.ps1",
+    "build": "anchor build",
+    "test": "anchor test",
+    "test:unit": "cargo test --package market --lib",
+    "test:production": "anchor test tests/production-readiness.ts",
+    "deploy:devnet": "powershell -File scripts/deploy-devnet.ps1",
+    "create-token": "powershell -File scripts/create-test-token.ps1",
+    "ui:start": "cd demo-ui && python -m http.server 8080 --bind 127.0.0.1"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",

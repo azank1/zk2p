@@ -10,6 +10,11 @@ market = "7eAHPRbhqzsqpC1Wuw2Y8AqRGGqGcEGAXAGmfsovfLae"
 order_store = "CYgv14nE8urDSaLDw8uP5QJDpZP12mRgoX8nPMXuXM6P"
 order_processor = "F1J8MS1XhZgALP4VSjrKHF4Kj3VaG1vnNUCtafVnHgKo"
 
+[programs.devnet]
+market = "EoDGhkuNrPXGciC1jE2VketUZn2hqqkh8jyrnwYs3h9H"
+order_store = "EoDGhkuNrPXGciC1jE2VketUZn2hqqkh8jyrnwYs3h9H"
+order_processor = "EoDGhkuNrPXGciC1jE2VketUZn2hqqkh8jyrnwYs3h9H"
+
 [registry]
 url = "https://api.apr.dev"
 

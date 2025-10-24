@@ -1,7 +1,28 @@
+# Anchor/Solana
 .anchor
-.DS_Store
 target
 **/*.rs.bk
-node_modules
 test-ledger
+.solana/
+
+# Node
+node_modules
 .yarn
+
+# Test reports (generated)
+test-reports/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.tmp
+.temp/

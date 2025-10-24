@@ -173,6 +173,41 @@
             background: rgba(136, 136, 136, 0.5);
         }
 
+        .btn-cancel {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 3px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            margin-left: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-cancel:hover {
+            background: #ff6666;
+            transform: scale(1.05);
+        }
+
+        .btn-scenario {
+            background: rgba(0, 170, 255, 0.3);
+            color: white;
+            border: 1px solid rgba(0, 170, 255, 0.5);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .btn-scenario:hover {
+            background: rgba(0, 170, 255, 0.5);
+            box-shadow: 0 0 15px rgba(0, 170, 255, 0.4);
+        }
+
         /* Stats */
         .stats {
             display: grid;
@@ -514,6 +549,14 @@
             <div class="form-group">
                 <label>Payment Method</label>
                 <input type="text" id="payment" placeholder="PayPal" value="PayPal">
+            </div>
+            
+            <div class="form-group">
+                <label>Order Type</label>
+                <select id="order-type" class="input">
+                    <option value="limit">Limit Order</option>
+                    <option value="fok">FOK (Fill-or-Kill)</option>
+                </select>
             </div>
 
             <button class="btn btn-ask" onclick="placeAskOrder()">Place Ask</button>
@@ -1074,9 +1117,11 @@
                     <div class="order-meta">
                         <span><strong>#${order.order_id}</strong></span>
                         <span class="order-price ${order.side}">$${order.price}</span>
+                        <button onclick="cancelOrder(${order.order_id})" class="btn-cancel">Cancel</button>
                     </div>
                     <div class="order-details">
                         ${order.side.toUpperCase()}: ${order.trader} | ${order.amount} tokens
+                        ${order.order_type ? `| Type: ${order.order_type}` : ''}
                     </div>
                 </div>
             `).join('');
@@ -1105,11 +1150,14 @@
 
             orderBook.last_order_id++;
 
+            const orderType = document.getElementById('order-type').value || 'limit';
+            
             const order = {
                 trader,
                 amount,
                 price,
                 side: 'ask',
+                order_type: orderType,
                 created_at: Date.now(),
                 order_id: orderBook.last_order_id
             };
@@ -1133,6 +1181,7 @@
             const trader = document.getElementById('trader').value.trim();
             const amount = parseInt(document.getElementById('amount').value);
             const price = parseInt(document.getElementById('price').value);
+            const orderType = document.getElementById('order-type').value || 'limit';
 
             if (!trader || !amount || !price) {
                 log('[Error] All fields are required', 'error');
@@ -1144,13 +1193,7 @@
                 return;
             }
 
-            log(`[Market] Bid order: ${amount} @ max $${price}`, 'info');
-
-            // Find best ask
-            const minResult = critbitTree.min();
-            if (minResult) {
-                log(`[CritBit] Best ask found at $${minResult.key}`, 'info');
-            }
+            log(`[${orderType.toUpperCase()}] Bid order: ${amount} @ max $${price}`, 'info');
 
             // Find matching asks
             const matchingAsks = orderBook.orders
@@ -1161,42 +1204,133 @@
                     return a.created_at - b.created_at;
                 });
 
+            // Check total available for FOK
+            const totalAvailable = matchingAsks.reduce((sum, ask) => sum + ask.amount, 0);
+
+            // Execute based on order type (simplified: Limit and FOK only)
+            switch(orderType) {
+                case 'limit':
+                    executeLimitBid(trader, amount, price, matchingAsks);
+                    break;
+                    
+                case 'fok':
+                    executeFOKBid(trader, amount, price, matchingAsks, totalAvailable);
+                    break;
+                    
+                default:
+                    executeLimitBid(trader, amount, price, matchingAsks);
+            }
+
+            renderOrderBook();
+            updateVisualization();
+            updateStats();
+        }
+
+        function executeLimitBid(trader, amount, price, matchingAsks) {
+            // 1:1 MATCHING - Only match against FIRST compatible ask
             if (matchingAsks.length === 0) {
-                log('[Market] No matching orders found', 'error');
+                log('[Limit] No matching orders found', 'error');
                 return;
             }
 
-            let remainingAmount = amount;
-            let matchedOrders = [];
+            // Match against FIRST ask only (1:1 buyer:seller)
+            const askOrder = matchingAsks[0];
+            const fillAmount = Math.min(amount, askOrder.amount);
+            
+            log(`[Match] 1:1 - ${fillAmount} tokens @ $${askOrder.price} from ${askOrder.trader}`, 'warning');
+            
+            totalMatches++;
+            totalVolume += fillAmount;
 
-            for (let i = 0; i < matchingAsks.length && remainingAmount > 0; i++) {
-                const askOrder = matchingAsks[i];
-                const fillAmount = Math.min(remainingAmount, askOrder.amount);
-
-                log(`[Match] ${fillAmount} tokens @ $${askOrder.price}`, 'warning');
-
-                matchedOrders.push({ askOrder, fillAmount });
-                remainingAmount -= fillAmount;
-                totalMatches++;
-                totalVolume += fillAmount;
-
-                const orderIndex = orderBook.orders.findIndex(o => o.order_id === askOrder.order_id);
-                if (orderIndex !== -1) {
-                    orderBook.orders[orderIndex].amount -= fillAmount;
-                    if (orderBook.orders[orderIndex].amount <= 0) {
-                        // Remove from tree
-                        try {
-                            critbitTree.remove(askOrder.price);
-                        } catch (e) {
-                            log(`[Error] ${e.message}`, 'error');
-                        }
-                        orderBook.orders.splice(orderIndex, 1);
-                    }
+            // Update ask order
+            const orderIndex = orderBook.orders.findIndex(o => o.order_id === askOrder.order_id);
+            if (orderIndex !== -1) {
+                orderBook.orders[orderIndex].amount -= fillAmount;
+                if (orderBook.orders[orderIndex].amount <= 0) {
+                    critbitTree.remove(askOrder.price);
+                    orderBook.orders.splice(orderIndex, 1);
+                    log(`[CritBit] Removed ask order #${askOrder.order_id}`, 'info');
                 }
             }
 
-            log(`[Market] ${matchedOrders.length} orders matched, volume: ${totalVolume}`, 'success');
+            const remaining = amount - fillAmount;
+            log(`[Limit] Matched ${fillAmount}/${amount} tokens (1:1 single seller)`, 'success');
 
+            // If remaining, add as resting limit order
+            if (remaining > 0) {
+                orderBook.last_order_id++;
+                const restingBid = {
+                    trader,
+                    amount: remaining,
+                    price,
+                    side: 'bid',
+                    order_type: 'limit',
+                    created_at: Date.now(),
+                    order_id: orderBook.last_order_id
+                };
+                orderBook.orders.push(restingBid);
+                critbitTree.insert(price, orderBook.last_order_id);
+                log(`[Limit] Resting bid added: ${remaining} @ $${price}`, 'info');
+            }
+        }
+
+        function executeFOKBid(trader, amount, price, matchingAsks, totalAvailable) {
+            // FOK: Must match EXACTLY with single ask (1:1 + exact amount)
+            if (matchingAsks.length === 0) {
+                log('[FOK] No matching orders - REJECTED', 'error');
+                return;
+            }
+
+            // Check if FIRST ask can fill the EXACT amount
+            const askOrder = matchingAsks[0];
+            
+            if (askOrder.amount !== amount) {
+                log('[FOK] Cannot fill exactly - REJECTED', 'error');
+                log(`[FOK] Need exactly ${amount}, but first ask has ${askOrder.amount}`, 'error');
+                return;
+            }
+
+            // Perfect match - fill completely
+            log(`[Match] 1:1 FOK - ${amount} tokens @ $${askOrder.price} from ${askOrder.trader}`, 'warning');
+            
+            totalMatches++;
+            totalVolume += amount;
+
+            // Remove ask order completely
+            const orderIndex = orderBook.orders.findIndex(o => o.order_id === askOrder.order_id);
+            if (orderIndex !== -1) {
+                critbitTree.remove(askOrder.price);
+                orderBook.orders.splice(orderIndex, 1);
+            }
+
+            log(`[FOK] Filled ${amount}/${amount} tokens exactly (1:1 perfect match)`, 'success');
+        }
+
+        function cancelOrder(orderId) {
+            const orderIndex = orderBook.orders.findIndex(o => o.order_id === orderId);
+            if (orderIndex === -1) {
+                log(`[Error] Order #${orderId} not found`, 'error');
+                return;
+            }
+            
+            const order = orderBook.orders[orderIndex];
+            
+            // Remove from CritBit tree if this was the last order at this price
+            const ordersAtPrice = orderBook.orders.filter(o => o.price === order.price && o.order_id !== orderId);
+            if (ordersAtPrice.length === 0) {
+                try {
+                    critbitTree.remove(order.price);
+                    log(`[CritBit] Removed price level ${order.price} from tree`, 'info');
+                } catch (e) {
+                    log(`[CritBit] ${e.message}`, 'warning');
+                }
+            }
+            
+            // Remove from order book
+            orderBook.orders.splice(orderIndex, 1);
+            
+            log(`[Cancel] Order #${orderId} cancelled: ${order.trader}, ${order.amount} @ $${order.price}`, 'warning');
+            
             renderOrderBook();
             updateVisualization();
             updateStats();

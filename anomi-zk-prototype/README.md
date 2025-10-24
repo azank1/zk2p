@@ -53,20 +53,15 @@ python -m http.server 8080 --bind 127.0.0.1
 
 Open http://127.0.0.1:8080 to visualize CritBit tree operations.
 
-## Implementation
+## Documentation
 
-**CritBit Tree (`critbit.rs`):**
-- 429 lines of production code
-- O(log n) insert, remove, find operations
-- Bit-pattern routing for efficient price levels
+- [Architecture](docs/ARCHITECTURE.md) - System design and data structures
+- [Testing Guide](docs/TESTING.md) - How to run tests
+- [CritBit Implementation](docs/CRITBIT_IMPLEMENTATION.md) - Technical details
+- [Matching Engine](docs/MATCHING_ENGINE.md) - Algorithm specification
 
-**Order Structure (`order.rs`):**
-- 122 bytes fixed-size
-- 5 order types: Limit, Market, Post-Only, IOC, FOK
-- Unique u128 order IDs
-- Partial fill tracking
+## Implementation Details
 
-**OrderBook (`order_book.rs`):**
-- Separate CritBit trees for bids/asks
-- 50 price levels (fits 10KB PDA limit)
-- FIFO queues at each price level
+**CritBit Tree:** O(log n) operations, 50 price levels per side  
+**Order Structure:** 122 bytes, 5 order types, partial fills supported  
+**OrderBook:** Separate bid/ask trees, FIFO queues at each price level
