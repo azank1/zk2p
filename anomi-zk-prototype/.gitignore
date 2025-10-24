@@ -8,6 +8,7 @@ test-ledger
 # Node
 node_modules
 .yarn
+docs
 
 # Test reports (generated)
 test-reports/
