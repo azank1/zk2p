@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::error::ErrorCode;
 
 /// CritBit (Critical Bit) tree implementation for efficient order book
 /// Based on Serum DEX architecture
@@ -369,14 +370,6 @@ impl CritBitTree {
             (None, None) => None,
         }
     }
-}
-
-#[error_code]
-pub enum ErrorCode {
-    #[msg("Order book is full")]
-    OrderBookFull,
-    #[msg("Order not found")]
-    OrderNotFound,
 }
 
 #[cfg(test)]

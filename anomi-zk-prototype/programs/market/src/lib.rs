@@ -8,9 +8,11 @@ declare_id!("7eAHPRbhqzsqpC1Wuw2Y8AqRGGqGcEGAXAGmfsovfLae");
 // Phase 2B: Order Management Modules
 // ============================================================================
 pub mod critbit;
+pub mod error;
 pub mod order;
 pub mod order_book;
 
+use error::ErrorCode;
 use order::{Order, OrderType, Side, generate_order_id};
 use order_book::OrderBook;
 
@@ -458,45 +460,3 @@ pub struct MatchOrder<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// ============================================================================
-// Error Codes
-// ============================================================================
-
-#[error_code]
-pub enum ErrorCode {
-    #[msg("Amount must be greater than zero")]
-    InvalidAmount,
-
-    #[msg("Price must be greater than zero")]
-    InvalidPrice,
-
-    #[msg("Payment method string is too long (max 100 characters)")]
-    PaymentMethodTooLong,
-
-    #[msg("Token account owner does not match seller")]
-    InvalidTokenAccountOwner,
-
-    #[msg("Token mint does not match expected mint")]
-    InvalidMint,
-
-    #[msg("Unauthorized caller - only OrderProcessor can release escrow")]
-    UnauthorizedCaller,
-
-    #[msg("Invalid program ID")]
-    InvalidProgramId,
-
-    #[msg("No matching orders found for this bid")]
-    NoMatchingOrders,
-
-    #[msg("Unauthorized cancellation - only order owner can cancel")]
-    UnauthorizedCancellation,
-
-    #[msg("Self-trade not allowed")]
-    SelfTradeNotAllowed,
-
-    #[msg("Post-only order would match immediately")]
-    PostOnlyWouldMatch,
-
-    #[msg("Fill-or-kill order cannot be fully filled")]
-    FillOrKillNotFilled,
-}

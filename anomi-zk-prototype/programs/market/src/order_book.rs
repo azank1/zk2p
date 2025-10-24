@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::critbit::CritBitTree;
+use crate::error::ErrorCode;
 use crate::order::{Order, OrderQueue, OrderType, Side};
 
 /// Order book with CritBit tree for efficient price-level management
@@ -292,18 +293,6 @@ impl OrderBook {
         }
         false
     }
-}
-
-#[error_code]
-pub enum ErrorCode {
-    #[msg("Order book is full")]
-    OrderBookFull,
-    #[msg("Order not found")]
-    OrderNotFound,
-    #[msg("Invalid order side")]
-    InvalidSide,
-    #[msg("Invalid price")]
-    InvalidPrice,
 }
 
 #[cfg(test)]

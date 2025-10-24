@@ -8,7 +8,6 @@ test-ledger
 # Node
 node_modules
 .yarn
-docs
 
 # Test reports (generated)
 test-reports/
@@ -27,3 +26,10 @@ Thumbs.db
 # Temporary
 *.tmp
 .temp/
+
+# Documentation artifacts
+docs/archive/
+*.draft.md
+*_STATUS.md
+*_SUMMARY.md
+*_COMPLETE.md
