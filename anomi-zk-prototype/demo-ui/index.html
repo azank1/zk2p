@@ -516,6 +516,11 @@
         <div class="panel glass-panel order-entry">
             <h3>Place Order</h3>
             
+            <!-- Phantom Wallet Connection Button -->
+            <button id="phantomConnectBtn" class="btn" onclick="connectPhantomWallet()" style="background: linear-gradient(135deg, #ab9ff2 0%, #6f5cc6 100%); margin-bottom: 15px; cursor: pointer;">
+                🔗 Connect Phantom Wallet
+            </button>
+            
             <div class="stats">
                 <div class="stat-box">
                     <div class="stat-value" id="statOrders">0</div>
@@ -1351,6 +1356,118 @@
         // Initialize
         updateStats();
         window.addEventListener('resize', () => updateVisualization());
+    </script>
+
+    <!-- Solana Web3.js CDN -->
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    
+    <!-- Phantom Wallet Integration -->
+    <script>
+        // Solana configuration
+        const DEVNET_RPC = 'https://api.devnet.solana.com';
+        const connection = new solanaWeb3.Connection(DEVNET_RPC, 'confirmed');
+        
+        // Deployed program ID
+        const MARKET_PROGRAM_ID = 'Bk2pKQsXXvjPChX2G8AWgwoefnwRbTSirtHGnG8yUEdB';
+        
+        let phantomWallet = null;
+        let connectedPubkey = null;
+        
+        async function connectPhantomWallet() {
+            try {
+                // Check if Phantom is installed
+                if (!window.solana || !window.solana.isPhantom) {
+                    alert('Phantom wallet not found!\\n\\nPlease install Phantom from phantom.app');
+                    window.open('https://phantom.app/', '_blank');
+                    return false;
+                }
+                
+                log('[Wallet] Phantom detected, connecting...', 'info');
+                
+                // Request connection
+                const resp = await window.solana.connect();
+                connectedPubkey = resp.publicKey.toString();
+                phantomWallet = window.solana;
+                
+                log('[Wallet] ✅ Connected: ' + connectedPubkey.slice(0, 8) + '...' + connectedPubkey.slice(-8), 'success');
+                
+                // Update button UI
+                const btn = document.getElementById('phantomConnectBtn');
+                if (btn) {
+                    btn.textContent = '✅ Connected: ' + connectedPubkey.slice(0, 4) + '...' + connectedPubkey.slice(-4);
+                    btn.style.background = 'linear-gradient(135deg, #00ff88, #00aa55)';
+                    btn.onclick = disconnectPhantom;
+                }
+                
+                // Get and display balance
+                const balance = await connection.getBalance(new solanaWeb3.PublicKey(connectedPubkey));
+                const solBalance = (balance / solanaWeb3.LAMPORTS_PER_SOL).toFixed(4);
+                log('[Wallet] Balance: ' + solBalance + ' SOL', 'info');
+                log('[Network] Connected to Devnet', 'info');
+                log('[Program] Market ID: ' + MARKET_PROGRAM_ID.slice(0, 8) + '...', 'info');
+                
+                return true;
+            } catch (err) {
+                log('[Wallet] ❌ Connection failed: ' + err.message, 'error');
+                return false;
+            }
+        }
+        
+        async function disconnectPhantom() {
+            if (phantomWallet) {
+                try {
+                    await phantomWallet.disconnect();
+                    connectedPubkey = null;
+                    phantomWallet = null;
+                    
+                    const btn = document.getElementById('phantomConnectBtn');
+                    if (btn) {
+                        btn.textContent = '🔗 Connect Phantom Wallet';
+                        btn.style.background = 'linear-gradient(135deg, #ab9ff2 0%, #6f5cc6 100%)';
+                        btn.onclick = connectPhantomWallet;
+                    }
+                    
+                    log('[Wallet] Disconnected', 'info');
+                } catch (err) {
+                    log('[Wallet] Error disconnecting: ' + err.message, 'error');
+                }
+            }
+        }
+        
+        // Auto-detect Phantom on page load
+        window.addEventListener('load', async () => {
+            if (window.solana) {
+                log('[Wallet] Phantom extension detected', 'success');
+                // Auto-connect if previously authorized
+                if (window.solana.isConnected) {
+                    await connectPhantomWallet();
+                }
+            } else {
+                log('[Wallet] Phantom not installed. Click button to install.', 'warning');
+            }
+        });
+        
+        // Handle account changes
+        if (window.solana) {
+            window.solana.on('accountChanged', (publicKey) => {
+                if (publicKey) {
+                    connectedPubkey = publicKey.toString();
+                    log('[Wallet] Account switched to ' + connectedPubkey.slice(0, 8) + '...', 'info');
+                    connectPhantomWallet();
+                } else {
+                    disconnectPhantom();
+                }
+            });
+            
+            window.solana.on('disconnect', () => {
+                log('[Wallet] Phantom disconnected', 'warning');
+                disconnectPhantom();
+            });
+        }
+        
+        console.log('✅ 2k2Peer Phantom Integration Ready');
+        console.log('📍 Market Program:', MARKET_PROGRAM_ID);
+        console.log('🌐 Network: Devnet (' + DEVNET_RPC + ')');
     </script>
 </body>
 </html>
