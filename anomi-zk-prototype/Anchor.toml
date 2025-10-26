@@ -12,8 +12,8 @@ order_processor = "F1J8MS1XhZgALP4VSjrKHF4Kj3VaG1vnNUCtafVnHgKo"
 
 [programs.devnet]
 market = "EoDGhkuNrPXGciC1jE2VketUZn2hqqkh8jyrnwYs3h9H"
-order_store = "EoDGhkuNrPXGciC1jE2VketUZn2hqqkh8jyrnwYs3h9H"
-order_processor = "EoDGhkuNrPXGciC1jE2VketUZn2hqqkh8jyrnwYs3h9H"
+order_store = "DjuV2BhfeVSnamUNPQhjY1NxtCqDT8RjG8xyKJAN2spg"
+order_processor = "6owJkVJUF6B4HeFXhHZcDPYFw4EyRbqvkT3mAns6Cdoq"
 
 [registry]
 url = "https://api.apr.dev"

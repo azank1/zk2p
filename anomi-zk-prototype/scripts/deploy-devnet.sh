@@ -24,10 +24,14 @@ echo -e "${CYAN}[2/5] Checking SOL balance...${NC}"
 BALANCE=$(solana balance | awk '{print $1}')
 echo "Current balance: $BALANCE SOL"
 
-if (( $(echo "$BALANCE < 2" | bc -l) )); then
-    echo -e "${YELLOW}Requesting airdrop...${NC}"
-    solana airdrop 2
+if (( $(echo "$BALANCE < 1" | bc -l) )); then
+    echo -e "${YELLOW}Low balance, requesting airdrop...${NC}"
+    solana airdrop 2 || echo -e "${YELLOW}⚠ Airdrop failed (rate limit), but continuing with current balance${NC}"
     sleep 5
+    BALANCE=$(solana balance | awk '{print $1}')
+    echo "New balance: $BALANCE SOL"
+else
+    echo -e "${GREEN}✓ Sufficient balance for deployment${NC}"
 fi
 echo ""
 
