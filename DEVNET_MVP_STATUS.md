@@ -200,4 +200,3 @@ Next session: Add ~100 lines of transaction code and we have true P2P trading!
 
 ---
 **Session Complete:** Ready for on-chain order implementation!
-

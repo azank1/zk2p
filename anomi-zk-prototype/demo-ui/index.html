@@ -1138,10 +1138,11 @@
         }
 
         // ================= Order Placement =================
-        function placeAskOrder() {
+        async function placeAskOrder() {
             const trader = document.getElementById('trader').value.trim();
             const amount = parseInt(document.getElementById('amount').value);
             const price = parseInt(document.getElementById('price').value);
+            const payment = document.getElementById('payment').value.trim() || 'PayPal';
 
             if (!trader || !amount || !price) {
                 log('[Error] All fields are required', 'error');
@@ -1152,6 +1153,16 @@
                 log('[Error] Amount and price must be positive', 'error');
                 return;
             }
+            
+            // Try on-chain first
+            const onChainSuccess = await placeOrderOnChain('ask', price, amount, payment);
+            if (onChainSuccess) {
+                log('[Order] ✅ ASK order placed on-chain!', 'success');
+                return; // Don't add to local simulation
+            }
+            
+            // Fall back to simulation if on-chain fails or not configured
+            log('[Order] Using local simulation', 'info');
 
             orderBook.last_order_id++;
 
@@ -1182,10 +1193,11 @@
             updateStats();
         }
 
-        function placeBidOrder() {
+        async function placeBidOrder() {
             const trader = document.getElementById('trader').value.trim();
             const amount = parseInt(document.getElementById('amount').value);
             const price = parseInt(document.getElementById('price').value);
+            const payment = document.getElementById('payment').value.trim() || 'PayPal';
             const orderType = document.getElementById('order-type').value || 'limit';
 
             if (!trader || !amount || !price) {
@@ -1197,7 +1209,16 @@
                 log('[Error] Amount and price must be positive', 'error');
                 return;
             }
-
+            
+            // Try on-chain first
+            const onChainSuccess = await placeOrderOnChain('bid', price, amount, payment);
+            if (onChainSuccess) {
+                log('[Order] ✅ BID order placed on-chain!', 'success');
+                return; // Don't add to local simulation
+            }
+            
+            // Fall back to simulation
+            log('[Order] Using local simulation', 'info');
             log(`[${orderType.toUpperCase()}] Bid order: ${amount} @ max $${price}`, 'info');
 
             // Find matching asks
@@ -1360,6 +1381,7 @@
 
     <!-- Solana Web3.js CDN -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="onchain-transactions.js"></script>
     
     <!-- Phantom Wallet Integration -->
     <script>
@@ -1521,6 +1543,43 @@
         }
         
         console.log('[2k2Peer] PDA functions ready');
+        
+        // ============================================================
+        // On-Chain Transaction Creation
+        // ============================================================
+        
+        // TODO: Set this after creating test token (see SETUP_ONCHAIN_TESTING.md)
+        const TOKEN_MINT_ADDRESS = null;
+        
+        async function placeOrderOnChain(side, price, quantity, paymentMethod) {
+            if (!phantomWallet || !connectedPubkey) {
+                log('[Order] Please connect Phantom wallet first', 'error');
+                return false;
+            }
+            
+            if (!TOKEN_MINT_ADDRESS) {
+                log('[Order] ⚠️ Token mint not configured', 'warning');
+                log('[Order] Running in SIMULATION mode', 'info');
+                log('[Order] See SETUP_ONCHAIN_TESTING.md to enable on-chain orders', 'info');
+                return false; // Falls back to simulation
+            }
+            
+            try {
+                log(`[Order] Creating ${side.toUpperCase()} order: ${quantity} @ $${price}`, 'info');
+                
+                // TODO: Build and send real transaction
+                // This requires the onchain-transactions.js module
+                
+                log('[Order] Transaction building not yet implemented', 'warning');
+                log('[Order] Falling back to simulation', 'info');
+                return false;
+            } catch (err) {
+                log('[Order] Transaction failed: ' + err.message, 'error');
+                return false;
+            }
+        }
+        
+        console.log('[2k2Peer] On-chain functions ready (token mint:', TOKEN_MINT_ADDRESS || 'NOT SET', ')');
     </script>
 </body>
 </html>
