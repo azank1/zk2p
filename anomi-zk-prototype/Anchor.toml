@@ -11,9 +11,9 @@ order_store = "CYgv14nE8urDSaLDw8uP5QJDpZP12mRgoX8nPMXuXM6P"
 order_processor = "F1J8MS1XhZgALP4VSjrKHF4Kj3VaG1vnNUCtafVnHgKo"
 
 [programs.devnet]
-market = "EoDGhkuNrPXGciC1jE2VketUZn2hqqkh8jyrnwYs3h9H"
-order_store = "DjuV2BhfeVSnamUNPQhjY1NxtCqDT8RjG8xyKJAN2spg"
-order_processor = "6owJkVJUF6B4HeFXhHZcDPYFw4EyRbqvkT3mAns6Cdoq"
+market = "Bk2pKQsXXvjPChX2G8AWgwoefnwRbTSirtHGnG8yUEdB"
+order_store = "9eVsFt83o3qkfaKNMZ6wuom2HL6ScB9sF3NikzDnxrNb"
+order_processor = "Gn8GGrCgmBQs4tRvf2oeWXjgsqHBcYByDhQiAxGdfFqV"
 
 [registry]
 url = "https://api.apr.dev"

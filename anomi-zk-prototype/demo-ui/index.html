@@ -516,9 +516,9 @@
         <div class="panel glass-panel order-entry">
             <h3>Place Order</h3>
             
-            <!-- Phantom Wallet Connection Button -->
-            <button id="phantomConnectBtn" class="btn" onclick="connectPhantomWallet()" style="background: linear-gradient(135deg, #ab9ff2 0%, #6f5cc6 100%); margin-bottom: 15px; cursor: pointer;">
-                🔗 Connect Phantom Wallet
+            <!-- Phantom Wallet Connection -->
+            <button id="phantomConnectBtn" class="btn" onclick="connectPhantomWallet()" style="background: linear-gradient(135deg, #ab9ff2 0%, #6f5cc6 100%); margin-bottom: 15px;">
+                Connect Phantom Wallet
             </button>
             
             <div class="stats">
@@ -1138,11 +1138,10 @@
         }
 
         // ================= Order Placement =================
-        async function placeAskOrder() {
+        function placeAskOrder() {
             const trader = document.getElementById('trader').value.trim();
             const amount = parseInt(document.getElementById('amount').value);
             const price = parseInt(document.getElementById('price').value);
-            const payment = document.getElementById('payment').value.trim() || 'PayPal';
 
             if (!trader || !amount || !price) {
                 log('[Error] All fields are required', 'error');
@@ -1153,16 +1152,6 @@
                 log('[Error] Amount and price must be positive', 'error');
                 return;
             }
-            
-            // Try on-chain first
-            const onChainSuccess = await placeOrderOnChain('ask', price, amount, payment);
-            if (onChainSuccess) {
-                log('[Order] ✅ ASK order placed on-chain!', 'success');
-                return; // Don't add to local simulation
-            }
-            
-            // Fall back to simulation if on-chain fails or not configured
-            log('[Order] Using local simulation', 'info');
 
             orderBook.last_order_id++;
 
@@ -1193,11 +1182,10 @@
             updateStats();
         }
 
-        async function placeBidOrder() {
+        function placeBidOrder() {
             const trader = document.getElementById('trader').value.trim();
             const amount = parseInt(document.getElementById('amount').value);
             const price = parseInt(document.getElementById('price').value);
-            const payment = document.getElementById('payment').value.trim() || 'PayPal';
             const orderType = document.getElementById('order-type').value || 'limit';
 
             if (!trader || !amount || !price) {
@@ -1209,16 +1197,7 @@
                 log('[Error] Amount and price must be positive', 'error');
                 return;
             }
-            
-            // Try on-chain first
-            const onChainSuccess = await placeOrderOnChain('bid', price, amount, payment);
-            if (onChainSuccess) {
-                log('[Order] ✅ BID order placed on-chain!', 'success');
-                return; // Don't add to local simulation
-            }
-            
-            // Fall back to simulation
-            log('[Order] Using local simulation', 'info');
+
             log(`[${orderType.toUpperCase()}] Bid order: ${amount} @ max $${price}`, 'info');
 
             // Find matching asks
@@ -1379,93 +1358,86 @@
         window.addEventListener('resize', () => updateVisualization());
     </script>
 
-    <!-- Solana Web3.js CDN -->
+    <!-- Solana Web3.js and Wallet Adapter -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
-    <script src="onchain-transactions.js"></script>
     
     <!-- Phantom Wallet Integration -->
     <script>
-        // Solana configuration
+        // Solana Web3 Configuration
         const DEVNET_RPC = 'https://api.devnet.solana.com';
         const connection = new solanaWeb3.Connection(DEVNET_RPC, 'confirmed');
         
-        // Deployed program ID
-        const MARKET_PROGRAM_ID = 'Bk2pKQsXXvjPChX2G8AWgwoefnwRbTSirtHGnG8yUEdB';
+        // Deployed Program IDs on Devnet
+        const PROGRAM_IDS = {
+            market: 'Bk2pKQsXXvjPChX2G8AWgwoefnwRbTSirtHGnG8yUEdB',
+            orderStore: '9eVsFt83o3qkfaKNMZ6wuom2HL6ScB9sF3NikzDnxrNb',
+            orderProcessor: 'Gn8GGrCgmBQs4tRvf2oeWXjgsqHBcYByDhQiAxGdfFqV'
+        };
         
         let phantomWallet = null;
         let connectedPubkey = null;
         
+        // Detect and connect to Phantom
+        async function detectPhantom() {
+            const isPhantomInstalled = window.solana && window.solana.isPhantom;
+            
+            if (!isPhantomInstalled) {
+                log('[Wallet] Phantom wallet not detected. Please install from phantom.app', 'error');
+                return false;
+            }
+            
+            log('[Wallet] Phantom detected', 'success');
+            return true;
+        }
+        
         async function connectPhantomWallet() {
             try {
-                // Check if Phantom is installed
-                if (!window.solana || !window.solana.isPhantom) {
-                    alert('Phantom wallet not found!\\n\\nPlease install Phantom from phantom.app');
+                if (!await detectPhantom()) {
                     window.open('https://phantom.app/', '_blank');
-                    return false;
+                    return;
                 }
                 
-                log('[Wallet] Phantom detected, connecting...', 'info');
-                
-                // Request connection
                 const resp = await window.solana.connect();
                 connectedPubkey = resp.publicKey.toString();
                 phantomWallet = window.solana;
                 
-                log('[Wallet] ✅ Connected: ' + connectedPubkey.slice(0, 8) + '...' + connectedPubkey.slice(-8), 'success');
+                log(`[Wallet] Connected: ${connectedPubkey.slice(0, 8)}...${connectedPubkey.slice(-8)}`, 'success');
                 
-                // Update button UI
-                const btn = document.getElementById('phantomConnectBtn');
-                if (btn) {
-                    btn.textContent = '✅ Connected: ' + connectedPubkey.slice(0, 4) + '...' + connectedPubkey.slice(-4);
-                    btn.style.background = 'linear-gradient(135deg, #00ff88, #00aa55)';
-                    btn.onclick = disconnectPhantom;
+                // Update UI with connected wallet
+                const walletBtn = document.querySelector('button');
+                if (walletBtn && walletBtn.textContent.includes('Connect')) {
+                    walletBtn.textContent = `Connected: ${connectedPubkey.slice(0, 4)}...${connectedPubkey.slice(-4)}`;
+                    walletBtn.style.background = 'linear-gradient(135deg, #00ff88, #00aa55)';
                 }
                 
-                // Get and display balance
+                // Check balance
                 const balance = await connection.getBalance(new solanaWeb3.PublicKey(connectedPubkey));
-                const solBalance = (balance / solanaWeb3.LAMPORTS_PER_SOL).toFixed(4);
-                log('[Wallet] Balance: ' + solBalance + ' SOL', 'info');
-                log('[Network] Connected to Devnet', 'info');
-                log('[Program] Market ID: ' + MARKET_PROGRAM_ID.slice(0, 8) + '...', 'info');
+                log(`[Wallet] Balance: ${(balance / solanaWeb3.LAMPORTS_PER_SOL).toFixed(4)} SOL`, 'info');
                 
                 return true;
             } catch (err) {
-                log('[Wallet] ❌ Connection failed: ' + err.message, 'error');
+                log(`[Wallet] Connection failed: ${err.message}`, 'error');
                 return false;
             }
         }
         
+        // Disconnect wallet
         async function disconnectPhantom() {
             if (phantomWallet) {
-                try {
-                    await phantomWallet.disconnect();
-                    connectedPubkey = null;
-                    phantomWallet = null;
-                    
-                    const btn = document.getElementById('phantomConnectBtn');
-                    if (btn) {
-                        btn.textContent = '🔗 Connect Phantom Wallet';
-                        btn.style.background = 'linear-gradient(135deg, #ab9ff2 0%, #6f5cc6 100%)';
-                        btn.onclick = connectPhantomWallet;
-                    }
-                    
-                    log('[Wallet] Disconnected', 'info');
-                } catch (err) {
-                    log('[Wallet] Error disconnecting: ' + err.message, 'error');
-                }
+                await phantomWallet.disconnect();
+                connectedPubkey = null;
+                phantomWallet = null;
+                log('[Wallet] Disconnected', 'info');
             }
         }
         
-        // Auto-detect Phantom on page load
+        // Initialize Phantom connection on page load
         window.addEventListener('load', async () => {
-            if (window.solana) {
-                log('[Wallet] Phantom extension detected', 'success');
-                // Auto-connect if previously authorized
-                if (window.solana.isConnected) {
-                    await connectPhantomWallet();
-                }
-            } else {
-                log('[Wallet] Phantom not installed. Click button to install.', 'warning');
+            await detectPhantom();
+            
+            // Auto-connect if previously authorized
+            if (window.solana && window.solana.isConnected) {
+                await connectPhantomWallet();
             }
         });
         
@@ -1474,112 +1446,15 @@
             window.solana.on('accountChanged', (publicKey) => {
                 if (publicKey) {
                     connectedPubkey = publicKey.toString();
-                    log('[Wallet] Account switched to ' + connectedPubkey.slice(0, 8) + '...', 'info');
-                    connectPhantomWallet();
+                    log(`[Wallet] Account changed to ${connectedPubkey.slice(0, 8)}...`, 'info');
                 } else {
                     disconnectPhantom();
                 }
             });
-            
-            window.solana.on('disconnect', () => {
-                log('[Wallet] Phantom disconnected', 'warning');
-                disconnectPhantom();
-            });
         }
         
-        console.log('✅ 2k2Peer Phantom Integration Ready');
-        console.log('📍 Market Program:', MARKET_PROGRAM_ID);
-        console.log('🌐 Network: Devnet (' + DEVNET_RPC + ')');
-        
-        // ============================================================
-        // PDA (Program Derived Address) Explanation
-        // ============================================================
-        // PDAs are deterministic addresses derived from:
-        // - Program ID
-        // - Seeds (like "market", "order_book", token mint)
-        // - Bump seed (ensures address is off ed25519 curve)
-        //
-        // PDAs let programs "own" accounts without private keys
-        // Used for: Market state, Order Book, Token Escrow
-        // ============================================================
-        
-        // Token mint (set this after creating test token on devnet)
-        const TOKEN_MINT = null;
-        
-        // Derive PDA helper
-        async function derivePDA(seeds, programId) {
-            return await solanaWeb3.PublicKey.findProgramAddress(
-                seeds,
-                new solanaWeb3.PublicKey(programId)
-            );
-        }
-        
-        // Get all Market program PDAs
-        async function getMarketPDAs(tokenMint) {
-            const tokenPubkey = new solanaWeb3.PublicKey(tokenMint);
-            const programId = MARKET_PROGRAM_ID;
-            
-            const [market] = await derivePDA(
-                [Buffer.from('market'), tokenPubkey.toBuffer()],
-                programId
-            );
-            const [orderBook] = await derivePDA(
-                [Buffer.from('order_book'), tokenPubkey.toBuffer()],
-                programId
-            );
-            const [escrowVault] = await derivePDA(
-                [Buffer.from('escrow_vault'), tokenPubkey.toBuffer()],
-                programId
-            );
-            const [escrowAuthority] = await derivePDA(
-                [Buffer.from('escrow_authority'), tokenPubkey.toBuffer()],
-                programId
-            );
-            
-            log('[PDA] Market: ' + market.toString().slice(0, 8) + '...', 'info');
-            log('[PDA] OrderBook: ' + orderBook.toString().slice(0, 8) + '...', 'info');
-            
-            return { market, orderBook, escrowVault, escrowAuthority };
-        }
-        
-        console.log('[2k2Peer] PDA functions ready');
-        
-        // ============================================================
-        // On-Chain Transaction Creation
-        // ============================================================
-        
-        // TODO: Set this after creating test token (see SETUP_ONCHAIN_TESTING.md)
-        const TOKEN_MINT_ADDRESS = null;
-        
-        async function placeOrderOnChain(side, price, quantity, paymentMethod) {
-            if (!phantomWallet || !connectedPubkey) {
-                log('[Order] Please connect Phantom wallet first', 'error');
-                return false;
-            }
-            
-            if (!TOKEN_MINT_ADDRESS) {
-                log('[Order] ⚠️ Token mint not configured', 'warning');
-                log('[Order] Running in SIMULATION mode', 'info');
-                log('[Order] See SETUP_ONCHAIN_TESTING.md to enable on-chain orders', 'info');
-                return false; // Falls back to simulation
-            }
-            
-            try {
-                log(`[Order] Creating ${side.toUpperCase()} order: ${quantity} @ $${price}`, 'info');
-                
-                // TODO: Build and send real transaction
-                // This requires the onchain-transactions.js module
-                
-                log('[Order] Transaction building not yet implemented', 'warning');
-                log('[Order] Falling back to simulation', 'info');
-                return false;
-            } catch (err) {
-                log('[Order] Transaction failed: ' + err.message, 'error');
-                return false;
-            }
-        }
-        
-        console.log('[2k2Peer] On-chain functions ready (token mint:', TOKEN_MINT_ADDRESS || 'NOT SET', ')');
+        console.log('[2k2Peer] Phantom wallet integration ready');
+        console.log('[2k2Peer] Market Program ID:', PROGRAM_IDS.market);
     </script>
 </body>
 </html>

@@ -42,18 +42,14 @@ impl OrderBook {
     
     /// Initialize a new order book
     pub fn new(market: Pubkey, base_mint: Pubkey, quote_mint: Pubkey) -> Self {
-        let mut order_queues = Vec::with_capacity(Self::MAX_PRICE_LEVELS);
-        for _ in 0..Self::MAX_PRICE_LEVELS {
-            order_queues.push(OrderQueue::new());
-        }
-        
+        // Don't pre-allocate all queues - initialize them on-demand to save space
         Self {
             market,
             base_mint,
             quote_mint,
             bids: CritBitTree::new(Self::MAX_PRICE_LEVELS),
             asks: CritBitTree::new(Self::MAX_PRICE_LEVELS),
-            order_queues,
+            order_queues: Vec::new(),  // Empty initially, grows on demand
             next_queue_index: 0,
             total_orders: 0,
             best_bid: 0,

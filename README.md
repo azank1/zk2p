@@ -121,12 +121,22 @@ The UI demonstrates CritBit tree operations in real-time with interactive visual
 **Getting Started:**
 - [Setup Guide](anomi-zk-prototype/docs/SETUP.md) - Installation instructions
 - [Deployment Guide](anomi-zk-prototype/docs/DEPLOYMENT.md) - Devnet deployment
+- [Demo UI Server Guide](anomi-zk-prototype/demo-ui/START_SERVER_GUIDE.md) - UI setup and usage
 
 **Technical:**
 - [Architecture](anomi-zk-prototype/docs/ARCHITECTURE.md) - System design
 - [CritBit Implementation](anomi-zk-prototype/docs/CRITBIT_IMPLEMENTATION.md) - Technical spec
 - [Matching Engine](anomi-zk-prototype/docs/MATCHING_ENGINE.md) - Algorithm details
 - [Testing Guide](anomi-zk-prototype/docs/TESTING.md) - Test procedures
+- [Production Tests](anomi-zk-prototype/tests/README_PRODUCTION_TESTS.md) - Production test suite
+
+**Deployment & Scripts:**
+- [Deployment Scripts](anomi-zk-prototype/scripts/DEPLOYMENT_README.md) - Script usage guide
+- [Test Suite Guide](anomi-zk-prototype/tests/README_TESTS.md) - Test structure and execution
+- [Devnet Deployment Status](anomi-zk-prototype/DEVNET_DEPLOYED.md) - Deployment tracking
+
+**Troubleshooting:**
+- [OrderBook Fix Guide](ORDERBOOK_FIX.md) - Known issue and fix instructions
 
 **Project Management:**
 - [Workflow Status](workflow_ANOMI.md) - Detailed roadmap and milestones
