@@ -1468,6 +1468,59 @@
         console.log('✅ 2k2Peer Phantom Integration Ready');
         console.log('📍 Market Program:', MARKET_PROGRAM_ID);
         console.log('🌐 Network: Devnet (' + DEVNET_RPC + ')');
+        
+        // ============================================================
+        // PDA (Program Derived Address) Explanation
+        // ============================================================
+        // PDAs are deterministic addresses derived from:
+        // - Program ID
+        // - Seeds (like "market", "order_book", token mint)
+        // - Bump seed (ensures address is off ed25519 curve)
+        //
+        // PDAs let programs "own" accounts without private keys
+        // Used for: Market state, Order Book, Token Escrow
+        // ============================================================
+        
+        // Token mint (set this after creating test token on devnet)
+        const TOKEN_MINT = null;
+        
+        // Derive PDA helper
+        async function derivePDA(seeds, programId) {
+            return await solanaWeb3.PublicKey.findProgramAddress(
+                seeds,
+                new solanaWeb3.PublicKey(programId)
+            );
+        }
+        
+        // Get all Market program PDAs
+        async function getMarketPDAs(tokenMint) {
+            const tokenPubkey = new solanaWeb3.PublicKey(tokenMint);
+            const programId = MARKET_PROGRAM_ID;
+            
+            const [market] = await derivePDA(
+                [Buffer.from('market'), tokenPubkey.toBuffer()],
+                programId
+            );
+            const [orderBook] = await derivePDA(
+                [Buffer.from('order_book'), tokenPubkey.toBuffer()],
+                programId
+            );
+            const [escrowVault] = await derivePDA(
+                [Buffer.from('escrow_vault'), tokenPubkey.toBuffer()],
+                programId
+            );
+            const [escrowAuthority] = await derivePDA(
+                [Buffer.from('escrow_authority'), tokenPubkey.toBuffer()],
+                programId
+            );
+            
+            log('[PDA] Market: ' + market.toString().slice(0, 8) + '...', 'info');
+            log('[PDA] OrderBook: ' + orderBook.toString().slice(0, 8) + '...', 'info');
+            
+            return { market, orderBook, escrowVault, escrowAuthority };
+        }
+        
+        console.log('[2k2Peer] PDA functions ready');
     </script>
 </body>
 </html>
