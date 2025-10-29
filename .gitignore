@@ -49,6 +49,9 @@ test-ledger/
 **/token-config.json
 **/devnet-config.json
 
+# Local documentation (not for GitHub)
+DEPLOYMENT_SUMMARY.md
+
 # Keep essential files:
 # - Source code (programs/, tests/, scripts/)
 # - Configuration (Anchor.toml, Cargo.toml, package.json)
