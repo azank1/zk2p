@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
+import { PublicKey, Keypair, SystemProgram, Connection } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import fs from "fs";
 
@@ -179,6 +179,16 @@ async function main() {
   console.log("2. Update demo-ui/index.html with config.json");
   console.log("3. Connect Phantom wallet and test!");
   console.log("");
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error("Error:", err);
+    process.exit(1);
+  });
+
+
 }
 
 main()

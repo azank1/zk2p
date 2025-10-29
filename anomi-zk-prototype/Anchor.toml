@@ -7,13 +7,9 @@ skip-lint = false
 
 [programs.localnet]
 market = "7eAHPRbhqzsqpC1Wuw2Y8AqRGGqGcEGAXAGmfsovfLae"
-order_store = "CYgv14nE8urDSaLDw8uP5QJDpZP12mRgoX8nPMXuXM6P"
-order_processor = "F1J8MS1XhZgALP4VSjrKHF4Kj3VaG1vnNUCtafVnHgKo"
 
 [programs.devnet]
 market = "Bk2pKQsXXvjPChX2G8AWgwoefnwRbTSirtHGnG8yUEdB"
-order_store = "9eVsFt83o3qkfaKNMZ6wuom2HL6ScB9sF3NikzDnxrNb"
-order_processor = "Gn8GGrCgmBQs4tRvf2oeWXjgsqHBcYByDhQiAxGdfFqV"
 
 [registry]
 url = "https://api.apr.dev"
