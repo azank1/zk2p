@@ -20,8 +20,9 @@ async function main() {
   console.log('Token Mint:', tokenMint.toString());
   console.log('Decimals:', tokenConfig.decimals, '\n');
 
-  // Load deployer wallet (seller)
-  const walletPath = process.env.HOME + '/.config/solana/id.json';
+  // Load deployer wallet (seller) - cross-platform
+  const homeDir = process.env.HOME || process.env.USERPROFILE;
+  const walletPath = `${homeDir}/.config/solana/id.json`;
   const walletData = JSON.parse(fs.readFileSync(walletPath, 'utf8'));
   const seller = Keypair.fromSecretKey(Uint8Array.from(walletData));
 
@@ -59,8 +60,25 @@ async function main() {
   );
   console.log('✅ Buyer ATA:', buyerATA.address.toString(), '\n');
 
+  // Fund buyer wallet with SOL for transaction fees
+  console.log('[2/4] Funding buyer wallet with SOL...');
+  const buyerBalance = await connection.getBalance(buyer.publicKey);
+  if (buyerBalance < 0.1 * 1e9) { // Less than 0.1 SOL
+    console.log('Buyer has insufficient SOL. Airdropping 1 SOL...');
+    try {
+      const airdropSig = await connection.requestAirdrop(buyer.publicKey, 1 * 1e9);
+      await connection.confirmTransaction(airdropSig);
+      console.log('✅ Airdropped 1 SOL to buyer');
+    } catch (err) {
+      console.log('⚠️  Airdrop failed (rate limit?). Buyer may need manual funding.');
+    }
+  } else {
+    console.log('✅ Buyer has sufficient SOL:', (buyerBalance / 1e9).toFixed(4), 'SOL');
+  }
+  console.log('');
+
   // Mint tokens to seller
-  console.log('[2/3] Minting 10,000 tokens to seller...');
+  console.log('[3/4] Minting 10,000 tokens to seller...');
   const sellerAmount = 10_000 * Math.pow(10, tokenConfig.decimals);
   await mintTo(
     connection,
@@ -73,7 +91,7 @@ async function main() {
   console.log('✅ Minted 10,000 tokens to seller\n');
 
   // Mint tokens to buyer
-  console.log('[3/3] Minting 10,000 tokens to buyer...');
+  console.log('[4/4] Minting 10,000 tokens to buyer...');
   const buyerAmount = 10_000 * Math.pow(10, tokenConfig.decimals);
   await mintTo(
     connection,
@@ -106,7 +124,7 @@ async function main() {
   console.log('=== Token Distribution Complete ===');
   console.log('Seller: 10,000 tokens');
   console.log('Buyer: 10,000 tokens');
-  console.log('\nNext step: ts-node scripts/init-devnet.ts', tokenMint.toString());
+  console.log('\nNext step: npm run p2p:test');
 }
 
 main().catch(error => {

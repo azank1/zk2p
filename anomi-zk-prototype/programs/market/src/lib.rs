@@ -205,6 +205,93 @@ pub mod market {
         Ok(())
     }
 
+    /// Mark payment as made by buyer (P2P fiat settlement stub)
+    pub fn mark_payment_made(
+        ctx: Context<MarkPayment>,
+        order_id: u128,
+    ) -> Result<()> {
+        let order_book = &mut ctx.accounts.order_book;
+        let clock = Clock::get()?;
+        
+        // Find the order in the order book
+        // This is a simplified implementation - in production would need more robust order tracking
+        for queue in order_book.order_queues.iter_mut() {
+            for order in queue.orders.iter_mut() {
+                if order.order_id == order_id {
+                    require!(
+                        order.owner == ctx.accounts.buyer.key(),
+                        ErrorCode::UnauthorizedAction
+                    );
+                    
+                    // Update payment status
+                    order.payment_status = order::PaymentStatus::PaymentMarked;
+                    order.payment_marked_timestamp = clock.unix_timestamp;
+                    order.settlement_timestamp = clock.unix_timestamp + 10; // 10 second delay
+                    
+                    msg!("Payment marked for order {}. Settlement in 10 seconds.", order_id);
+                    return Ok(());
+                }
+            }
+        }
+        
+        Err(ErrorCode::OrderNotFound.into())
+    }
+
+    /// Verify settlement after delay and release tokens (stub ZK verification)
+    pub fn verify_settlement(
+        ctx: Context<VerifySettlement>,
+        order_id: u128,
+    ) -> Result<()> {
+        let order_book = &mut ctx.accounts.order_book;
+        let clock = Clock::get()?;
+        
+        // Find the order
+        for queue in order_book.order_queues.iter_mut() {
+            for order in queue.orders.iter_mut() {
+                if order.order_id == order_id {
+                    // Check settlement delay has passed
+                    require!(
+                        clock.unix_timestamp >= order.settlement_timestamp,
+                        ErrorCode::SettlementDelayNotExpired
+                    );
+                    
+                    // Update status (in production, this would validate ZK proof)
+                    order.payment_status = order::PaymentStatus::Verified;
+                    
+                    // Transfer tokens from escrow to seller
+                    let token_mint = ctx.accounts.token_mint.key();
+                    let seeds = &[
+                        b"escrow_authority",
+                        token_mint.as_ref(),
+                        &[ctx.bumps.escrow_authority],
+                    ];
+                    let signer = &[&seeds[..]];
+                    
+                    let cpi_accounts = Transfer {
+                        from: ctx.accounts.escrow_vault.to_account_info(),
+                        to: ctx.accounts.seller_token_account.to_account_info(),
+                        authority: ctx.accounts.escrow_authority.to_account_info(),
+                    };
+                    let cpi_program = ctx.accounts.token_program.to_account_info();
+                    let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+                    
+                    token::transfer(cpi_ctx, order.quantity)?;
+                    
+                    msg!("Settlement verified for order {}. Tokens released.", order_id);
+                    return Ok(());
+                }
+            }
+        }
+        
+        Err(ErrorCode::OrderNotFound.into())
+    }
+    
+    /// Reset the order book (close and allow re-init with new structure)
+    pub fn reset_order_book(ctx: Context<ResetOrderBook>) -> Result<()> {
+        msg!("Order book reset. Re-initialize with new structure.");
+        Ok(())
+    }
+
     /// Match an order with advanced order type handling
     pub fn match_order(
         ctx: Context<MatchOrder>,
@@ -343,7 +430,7 @@ pub struct InitializeOrderBook<'info> {
     #[account(
         init,
         payer = payer,
-        space = 8 + std::mem::size_of::<OrderBook>(),
+        space = 8 + OrderBook::INIT_SPACE,
         seeds = [b"order_book", token_mint.key().as_ref()],
         bump,
     )]
@@ -457,6 +544,77 @@ pub struct MatchOrder<'info> {
 
     pub token_mint: InterfaceAccount<'info, Mint>,
 
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct MarkPayment<'info> {
+    #[account(mut)]
+    pub buyer: Signer<'info>,
+    
+    #[account(
+        mut,
+        seeds = [b"order_book", token_mint.key().as_ref()],
+        bump,
+    )]
+    pub order_book: Account<'info, OrderBook>,
+    
+    pub token_mint: InterfaceAccount<'info, Mint>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct VerifySettlement<'info> {
+    #[account(
+        mut,
+        seeds = [b"order_book", token_mint.key().as_ref()],
+        bump,
+    )]
+    pub order_book: Account<'info, OrderBook>,
+    
+    #[account(
+        mut,
+        seeds = [b"escrow_vault", token_mint.key().as_ref()],
+        bump,
+        constraint = escrow_vault.mint == token_mint.key() @ ErrorCode::InvalidMint,
+    )]
+    pub escrow_vault: InterfaceAccount<'info, TokenAccount>,
+    
+    #[account(mut)]
+    pub seller_token_account: InterfaceAccount<'info, TokenAccount>,
+    
+    /// CHECK: PDA that has authority over escrow vault
+    #[account(
+        seeds = [b"escrow_authority", token_mint.key().as_ref()],
+        bump,
+    )]
+    pub escrow_authority: UncheckedAccount<'info>,
+    
+    pub token_mint: InterfaceAccount<'info, Mint>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct ResetOrderBook<'info> {
+    #[account(
+        mut,
+        seeds = [b"order_book", token_mint.key().as_ref()],
+        bump,
+        close = authority,
+    )]
+    pub order_book: Account<'info, OrderBook>,
+    
+    #[account(
+        seeds = [b"market", token_mint.key().as_ref()],
+        bump,
+    )]
+    pub market: Account<'info, Market>,
+    
+    pub token_mint: InterfaceAccount<'info, Mint>,
+    
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    
     pub system_program: Program<'info, System>,
 }
 

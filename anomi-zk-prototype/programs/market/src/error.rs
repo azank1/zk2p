@@ -52,4 +52,11 @@ pub enum ErrorCode {
     // Payment
     #[msg("Payment method string is too long (max 100 characters)")]
     PaymentMethodTooLong,
+    
+    // P2P Settlement
+    #[msg("Unauthorized action - only order owner can perform this")]
+    UnauthorizedAction,
+    
+    #[msg("Settlement delay has not expired yet")]
+    SettlementDelayNotExpired,
 }

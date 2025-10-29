@@ -1,159 +1,102 @@
 # ZK2P Protocol
 
-Zero-Knowledge Proof P2P Fiat-to-Crypto Exchange on Solana.
+Zero-Knowledge Proof P2P Token Exchange on Solana.
 
 ## Quick Start
 
-### Prerequisites
-
-Required tools:
-- Git
-- Node.js (v18+)
-- Rust (v1.70+)
-- Solana CLI (v1.17+)
-- Anchor CLI (v0.29.0)
-
-**See:** [docs/SETUP.md](anomi-zk-prototype/docs/SETUP.md) for detailed installation instructions
-
-### Setup & Build
-
 ```bash
-# Clone repository
-git clone https://github.com/azank1/zk2p.git
-cd zk2p/anomi-zk-prototype
+cd anomi-zk-prototype
 
 # Install dependencies
-yarn install
+npm install
 
 # Build programs
 anchor build
 
 # Run tests
-anchor test
-```
+npm test
 
-### Deploy to Devnet
-
-```bash
-# Deploy programs
+# Deploy to devnet
 npm run deploy:devnet
-
-# Create test token
-npm run create-token
-
-# Initialize market
-ts-node scripts/init-devnet.ts $(cat scripts/test-token-mint.txt)
 ```
 
-**See:** [docs/DEPLOYMENT.md](anomi-zk-prototype/docs/DEPLOYMENT.md) for detailed deployment guide
-
-## Testing
-
-**All Tests:**
-```bash
-npm run test
-```
-
-**Unit Tests (Rust):**
-```bash
-npm run test:unit
-```
-
-**Production Tests:**
-```bash
-npm run test:production
-```
-
-Total test coverage: 39 tests (10 unit + 6 integration + 23 production)
-
-## Demo UI
+## P2P Testing (Devnet)
 
 ```bash
-npm run ui:start
-# Open http://127.0.0.1:8080
+# 1. Create test token
+npm run p2p:create-token
+
+# 2. Setup buyer wallet
+npm run p2p:setup-buyer
+
+# 3. Initialize market
+npm run p2p:init-market <TOKEN_MINT>
+
+# 4. Distribute tokens
+npm run p2p:distribute
+
+# 5. Run P2P swap test
+npm run p2p:test
+
+# 6. Verify order book
+npm run p2p:fetch
 ```
 
-The UI demonstrates CritBit tree operations in real-time with interactive visualization.
+## How It Works
 
-**Features:**
-- Real-time order book visualization
-- CritBit tree structure display
-- All 5 order types (Limit, Market, Post-Only, IOC, FOK)
-- Multi-order matching simulation
-- Order cancellation
-
-## Architecture
-
-**Multi-Program Design:**
-- `Market` - Order matching, token custody
+**Multi-Program Architecture:**
+- `Market` - Order matching with CritBit tree-based order book
 - `OrderStore` - Persistent matched order storage
-- `OrderProcessor` - ZK proof validation, settlement
+- `OrderProcessor` - ZK proof validation and settlement
+
+**Order Flow:**
+1. Users place limit/market orders (ASK to sell, BID to buy)
+2. Orders matched on-chain using price-time priority
+3. Tokens held in escrow during matching
+4. Matched orders stored for off-chain settlement
+5. ZK proofs validate fiat payment (future feature)
+6. Tokens released upon proof verification
 
 **Key Features:**
-- CritBit tree-based order book (O(log n) operations)
-- 5 order types with matching engine
-- Price-time priority matching
-- Partial fill support
-- Self-trade prevention
+- CritBit tree: O(log n) order operations
+- 5 order types: Limit, Market, Post-Only, IOC, FOK
+- Partial fills and self-trade prevention
 - Token escrow with SPL integration
-- PDA-based security
-
-## Current Status
-
-✅ **Production Ready**
-- Core matching engine complete
-- 39 passing tests
-- All order types implemented
-- Token escrow secure
-- Deployment scripts ready
-
-🚧 **In Progress**
-- Devnet deployment
-- Phantom wallet integration
-- Multi-wallet testing
-
-⏳ **Future**
-- ZK proof integration (waiting for circuits)
-- Mainnet deployment
+- 39 passing tests (10 unit + 29 integration)
 
 ## Documentation
 
-**Getting Started:**
-- [Setup Guide](anomi-zk-prototype/docs/SETUP.md) - Installation instructions
-- [Deployment Guide](anomi-zk-prototype/docs/DEPLOYMENT.md) - Devnet deployment
-- [Demo UI Server Guide](anomi-zk-prototype/demo-ui/START_SERVER_GUIDE.md) - UI setup and usage
+- [`anomi-zk-prototype/docs/SETUP.md`](anomi-zk-prototype/docs/SETUP.md) - Installation guide
+- [`anomi-zk-prototype/docs/DEPLOYMENT.md`](anomi-zk-prototype/docs/DEPLOYMENT.md) - Deployment instructions
+- [`anomi-zk-prototype/docs/TESTING.md`](anomi-zk-prototype/docs/TESTING.md) - Testing guide
+- [`anomi-zk-prototype/docs/ARCHITECTURE.md`](anomi-zk-prototype/docs/ARCHITECTURE.md) - System design
+- [`workflow_ANOMI.md`](workflow_ANOMI.md) - Project status and roadmap
 
-**Technical:**
-- [Architecture](anomi-zk-prototype/docs/ARCHITECTURE.md) - System design
-- [CritBit Implementation](anomi-zk-prototype/docs/CRITBIT_IMPLEMENTATION.md) - Technical spec
-- [Matching Engine](anomi-zk-prototype/docs/MATCHING_ENGINE.md) - Algorithm details
-- [Testing Guide](anomi-zk-prototype/docs/TESTING.md) - Test procedures
-- [Production Tests](anomi-zk-prototype/tests/README_PRODUCTION_TESTS.md) - Production test suite
+## Current Status
 
-**Deployment & Scripts:**
-- [Deployment Scripts](anomi-zk-prototype/scripts/DEPLOYMENT_README.md) - Script usage guide
-- [Test Suite Guide](anomi-zk-prototype/tests/README_TESTS.md) - Test structure and execution
-- [Devnet Deployment Status](anomi-zk-prototype/DEVNET_DEPLOYED.md) - Deployment tracking
+✅ **Completed:**
+- Core matching engine with CritBit trees
+- All 5 order types implemented
+- Token escrow system secure
+- 39 tests passing
+- Deployed to Solana devnet
+- P2P testing scripts ready
 
-**Troubleshooting:**
-- [OrderBook Fix Guide](ORDERBOOK_FIX.md) - Known issue and fix instructions
+🚧 **In Progress:**
+- End-to-end P2P wallet testing
+- Phantom wallet UI integration
 
-**Project Management:**
-- [Workflow Status](workflow_ANOMI.md) - Detailed roadmap and milestones
+⏳ **Future:**
+- Off-chain fiat payment verification
+- ZK proof circuit integration
+- Mainnet deployment
 
-## NPM Scripts
-
-```bash
-npm run check-deps        # Verify all tools installed
-npm run build            # Build Anchor programs
-npm run test             # Run all tests
-npm run test:unit        # Run Rust unit tests
-npm run test:production  # Run production tests
-npm run deploy:devnet    # Deploy to Solana devnet
-npm run create-token     # Create test SPL token
-npm run ui:start         # Start demo UI server
-```
+See [`workflow_ANOMI.md`](workflow_ANOMI.md) for detailed roadmap.
 
 ## Contributing
 
-This project follows a milestone-based development approach. See [workflow_ANOMI.md](workflow_ANOMI.md) for current status and upcoming milestones.
+This project follows a milestone-based development approach. See the workflow document for current status and next steps.
+
+## License
+
+ISC

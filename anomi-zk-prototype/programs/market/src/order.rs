@@ -33,6 +33,21 @@ impl Side {
     }
 }
 
+/// Payment status for P2P fiat settlement (stub ZK verification)
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PaymentStatus {
+    /// Order matched, awaiting payment
+    Pending,
+    /// Buyer marked as paid
+    PaymentMarked,
+    /// In 10-second verification window
+    SettlementDelay,
+    /// Payment verified (stub - always true after delay)
+    Verified,
+    /// Payment disputed (future)
+    Disputed,
+}
+
 /// Individual order in the order book
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug)]
 pub struct Order {
@@ -56,6 +71,14 @@ pub struct Order {
     pub client_order_id: u64,
     /// Payment method (for off-chain settlement)
     pub payment_method: [u8; 32], // Fixed-size for better packing
+    
+    // P2P Payment tracking fields (for fiat settlement with stub ZK verification)
+    /// Payment status for matched orders
+    pub payment_status: PaymentStatus,
+    /// Timestamp when buyer marked payment as made
+    pub payment_marked_timestamp: i64,
+    /// Timestamp when settlement delay expires (10 seconds after marked)
+    pub settlement_timestamp: i64,
 }
 
 impl Order {
@@ -68,7 +91,10 @@ impl Order {
                           1 +  // order_type
                           1 +  // side
                           8 +  // client_order_id
-                          32;  // payment_method
+                          32 + // payment_method
+                          1 +  // payment_status
+                          8 +  // payment_marked_timestamp
+                          8;   // settlement_timestamp
     
     /// Create a new order
     pub fn new(
@@ -98,6 +124,9 @@ impl Order {
             side,
             client_order_id,
             payment_method: payment_bytes,
+            payment_status: PaymentStatus::Pending,
+            payment_marked_timestamp: 0,
+            settlement_timestamp: 0,
         }
     }
     

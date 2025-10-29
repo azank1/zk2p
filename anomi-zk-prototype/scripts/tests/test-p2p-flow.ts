@@ -2,6 +2,8 @@ import * as anchor from '@coral-xyz/anchor';
 import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getAccount } from '@solana/spl-token';
 import * as fs from 'fs';
+import type { Market } from '../target/types/market';
+import marketIdl from '../target/idl/market.json';
 
 const DEVNET_RPC = 'https://api.devnet.solana.com';
 
@@ -12,8 +14,9 @@ async function main() {
   const tokenConfig = JSON.parse(fs.readFileSync('scripts/token-config.json', 'utf8'));
   const tokenMint = new PublicKey(tokenConfig.tokenMint);
 
-  // Load wallets
-  const sellerPath = process.env.HOME + '/.config/solana/id.json';
+  // Load wallets (cross-platform)
+  const homeDir = process.env.HOME || process.env.USERPROFILE;
+  const sellerPath = `${homeDir}/.config/solana/id.json`;
   const sellerData = JSON.parse(fs.readFileSync(sellerPath, 'utf8'));
   const seller = Keypair.fromSecretKey(Uint8Array.from(sellerData));
 
@@ -32,8 +35,7 @@ async function main() {
   });
   anchor.setProvider(provider);
 
-  const idl = JSON.parse(fs.readFileSync('target/idl/market.json', 'utf8'));
-  const program = new anchor.Program(idl, provider);
+  const program = new anchor.Program<Market>(marketIdl as any, provider);
 
   // Derive PDAs
   const [market] = PublicKey.findProgramAddressSync(
@@ -71,7 +73,7 @@ async function main() {
   console.log('[1/2] Seller placing ASK order (100 tokens @ 50)...');
   
   try {
-    const askTx = await program.methods
+    const askTx = await (program.methods as any)
       .placeLimitOrderV2(
         { ask: {} },
         new anchor.BN(50),
@@ -108,10 +110,10 @@ async function main() {
   const buyerProvider = new anchor.AnchorProvider(connection, new anchor.Wallet(buyer), {
     commitment: 'confirmed',
   });
-  const buyerProgram = new anchor.Program(idl, buyerProvider);
+  const buyerProgram = new anchor.Program<Market>(marketIdl as any, buyerProvider);
 
   try {
-    const bidTx = await buyerProgram.methods
+    const bidTx = await (buyerProgram.methods as any)
       .placeLimitOrderV2(
         { bid: {} },
         new anchor.BN(50),

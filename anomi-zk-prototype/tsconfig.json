@@ -1,10 +1,18 @@
 {
   "compilerOptions": {
-    "types": ["mocha", "chai"],
+    "types": ["mocha", "chai", "node"],
     "typeRoots": ["./node_modules/@types"],
     "lib": ["es2015"],
     "module": "commonjs",
     "target": "es6",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true
+  },
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs",
+      "skipLibCheck": true
+    }
   }
 }

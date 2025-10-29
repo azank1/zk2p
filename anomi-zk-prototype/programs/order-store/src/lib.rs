@@ -37,7 +37,7 @@ pub mod order_store {
     /// Update order status to Confirmed after ZK proof validation
     pub fn confirm_order(
         ctx: Context<ConfirmOrder>,
-        proof_data: Vec<u8>,
+        _proof_data: Vec<u8>,
     ) -> Result<()> {
         let matched_order = &mut ctx.accounts.matched_order;
         
@@ -79,7 +79,7 @@ pub struct CreateMatchedOrder<'info> {
         init,
         payer = payer,
         space = 8 + MatchedOrder::LEN,
-        seeds = [b"matched_order", &order_id.to_le_bytes()],
+        seeds = [b"matched_order", order_id.to_le_bytes().as_ref()],
         bump
     )]
     pub matched_order: Account<'info, MatchedOrder>,

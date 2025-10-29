@@ -1,6 +1,8 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import * as fs from 'fs';
+import type { Market } from '../target/types/market';
+import marketIdl from '../target/idl/market.json';
 
 const DEVNET_RPC = 'https://api.devnet.solana.com';
 
@@ -11,8 +13,9 @@ async function main() {
   const tokenConfig = JSON.parse(fs.readFileSync('scripts/token-config.json', 'utf8'));
   const tokenMint = new PublicKey(tokenConfig.tokenMint);
 
-  // Load wallet
-  const walletPath = process.env.HOME + '/.config/solana/id.json';
+  // Load wallet (cross-platform)
+  const homeDir = process.env.HOME || process.env.USERPROFILE;
+  const walletPath = `${homeDir}/.config/solana/id.json`;
   const walletData = JSON.parse(fs.readFileSync(walletPath, 'utf8'));
   const wallet = Keypair.fromSecretKey(Uint8Array.from(walletData));
 
@@ -23,9 +26,8 @@ async function main() {
   });
   anchor.setProvider(provider);
 
-  // Load program
-  const idl = JSON.parse(fs.readFileSync('target/idl/market.json', 'utf8'));
-  const program = new anchor.Program(idl, provider);
+  // Load program with proper typing
+  const program = new anchor.Program<Market>(marketIdl as any, provider);
 
   console.log('Program ID:', program.programId.toString());
   console.log('Token Mint:', tokenMint.toString(), '\n');

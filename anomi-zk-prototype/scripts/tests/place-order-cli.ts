@@ -2,6 +2,8 @@ import * as anchor from '@coral-xyz/anchor';
 import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 import * as fs from 'fs';
+import type { Market } from '../target/types/market';
+import marketIdl from '../target/idl/market.json';
 
 const DEVNET_RPC = 'https://api.devnet.solana.com';
 
@@ -43,9 +45,8 @@ async function main() {
   });
   anchor.setProvider(provider);
 
-  // Load program
-  const idl = JSON.parse(fs.readFileSync('target/idl/market.json', 'utf8'));
-  const program = new anchor.Program(idl, provider);
+  // Load program with proper typing
+  const program = new anchor.Program<Market>(marketIdl as any, provider);
 
   console.log('Program ID:', program.programId.toString(), '\n');
 
@@ -86,7 +87,7 @@ async function main() {
   const paymentMethod = 'Phantom-Test';
 
   try {
-    const tx = await program.methods
+    const tx = await (program.methods as any)
       .placeLimitOrderV2(
         sideEnum,
         new anchor.BN(price),

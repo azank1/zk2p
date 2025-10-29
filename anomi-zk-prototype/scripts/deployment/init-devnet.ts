@@ -1,7 +1,9 @@
 import * as anchor from "@coral-xyz/anchor";
-import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
+import { PublicKey, Keypair, SystemProgram, Connection } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import fs from "fs";
+import type { Market } from '../target/types/market';
+import marketIdl from '../target/idl/market.json';
 
 /**
  * Initialize Market on Solana Devnet
@@ -27,12 +29,17 @@ async function main() {
   console.log("");
 
   // Setup provider (devnet)
-  const provider = anchor.AnchorProvider.env();
+  const homeDir = process.env.HOME || process.env.USERPROFILE;
+  const walletPath = `${homeDir}/.config/solana/id.json`;
+  const walletData = JSON.parse(fs.readFileSync(walletPath, 'utf8'));
+  const wallet = new anchor.Wallet(Keypair.fromSecretKey(Uint8Array.from(walletData)));
+  
+  const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+  const provider = new anchor.AnchorProvider(connection, wallet, { commitment: 'confirmed' });
   anchor.setProvider(provider);
 
-  // Load program
-  const idl = JSON.parse(fs.readFileSync("target/idl/market.json", "utf8"));
-  const program = new anchor.Program(idl, programId, provider);
+  // Load program with proper typing
+  const program = new anchor.Program<Market>(marketIdl as any, provider);
 
   // Get token mint from command line or use placeholder
   const tokenMintStr = process.argv[2];
@@ -79,7 +86,7 @@ async function main() {
   // Step 1: Initialize Escrow Vault
   console.log("[1/3] Initializing escrow vault...");
   try {
-    const tx1 = await program.methods
+    const tx1 = await (program.methods as any)
       .initializeEscrowVault()
       .accounts({
         escrowVault,
@@ -102,7 +109,7 @@ async function main() {
   // Step 2: Initialize Market
   console.log("[2/3] Initializing market...");
   try {
-    const tx2 = await program.methods
+    const tx2 = await (program.methods as any)
       .initializeMarket()
       .accounts({
         market,
@@ -123,7 +130,7 @@ async function main() {
   // Step 3: Initialize Order Book
   console.log("[3/3] Initializing order book...");
   try {
-    const tx3 = await program.methods
+    const tx3 = await (program.methods as any)
       .initializeOrderBookV2()
       .accounts({
         orderBook,
@@ -136,8 +143,15 @@ async function main() {
 
     console.log("✓ Order book initialized");
     console.log("  TX:", tx3);
-  } catch (err) {
-    console.log("  (Order book may already exist)");
+  } catch (err: any) {
+    console.log("❌ Order book initialization FAILED");
+    console.log("Error:", err.message);
+    if (err.logs) {
+      console.log("\nProgram Logs:");
+      err.logs.forEach((log: string) => console.log("  ", log));
+    }
+    console.log("\nThis is likely due to the OrderBook size exceeding 10KB limit.");
+    console.log("See docs/ARCHITECTURE.md for the lazy initialization solution.");
   }
   console.log("");
 

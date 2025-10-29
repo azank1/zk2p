@@ -34,13 +34,24 @@ test-ledger/
 # TypeScript build info
 *.tsbuildinfo
 **/*.tsbuildinfo
-
+.docs/
 # Generated files
 **/generated/
 **/dist/
 ./cursor
+
+# Test wallets and keys (SECURITY: Never commit private keys)
+**/test-buyer-wallet.json
+**/e2e-distribution.json
+**/*-wallet.json
+
+# Temporary config files
+**/token-config.json
+**/devnet-config.json
+
 # Keep essential files:
 # - Source code (programs/, tests/, scripts/)
 # - Configuration (Anchor.toml, Cargo.toml, package.json)
-# - Documentation (README.md, workflow_ANOMI.md)
-# - Tests (all .ts files)
+# - Documentation (README.md, workflow_ANOMI.md, docs/)
+# - Demo UI (demo-ui/)
+# - Tests (all .ts test files)

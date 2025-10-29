@@ -208,6 +208,74 @@
             box-shadow: 0 0 15px rgba(0, 170, 255, 0.4);
         }
 
+        .btn-payment {
+            background: linear-gradient(135deg, #ffaa00 0%, #ff8800 100%);
+            color: #000;
+            font-weight: bold;
+        }
+
+        .btn-payment:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(255, 170, 0, 0.5);
+        }
+
+        .btn-payment:disabled {
+            background: rgba(102, 102, 102, 0.3);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Payment Status Section */
+        .payment-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 170, 0, 0.1);
+            border: 1px solid rgba(255, 170, 0, 0.3);
+            border-radius: 6px;
+            display: none;
+        }
+
+        .payment-section h4 {
+            color: #ffaa00;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .payment-status {
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .settlement-timer {
+            padding: 15px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 6px;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .countdown {
+            font-size: 2em;
+            color: #00ff88;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .wallet-role {
+            background: rgba(0, 170, 255, 0.2);
+            border: 1px solid rgba(0, 170, 255, 0.4);
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+            color: #00aaff;
+        }
+
         /* Stats */
         .stats {
             display: grid;
@@ -521,6 +589,17 @@
                 Connect Phantom Wallet
             </button>
             
+            <!-- Wallet Role Indicator -->
+            <div id="walletRole" class="wallet-role" style="display:none;">
+                Role: <span id="walletRoleText">Unknown</span>
+            </div>
+            
+            <!-- Token Mint Configuration -->
+            <div class="form-group">
+                <label>Token Mint Address</label>
+                <input type="text" id="tokenMint" placeholder="Token Mint Address (leave blank for default)" value="">
+            </div>
+            
             <div class="stats">
                 <div class="stat-box">
                     <div class="stat-value" id="statOrders">0</div>
@@ -566,7 +645,22 @@
 
             <button class="btn btn-ask" onclick="placeAskOrder()">Place Ask</button>
             <button class="btn btn-bid" onclick="placeBidOrder()">Place Bid</button>
+            <button class="btn btn-scenario" onclick="matchOrdersOnChain()">Match Orders (On-Chain)</button>
             <button class="btn btn-clear" onclick="clearAll()">Clear All</button>
+            
+            <!-- P2P Payment Status Section -->
+            <div id="paymentSection" class="payment-section">
+                <h4>P2P Payment Status</h4>
+                <div id="paymentStatus" class="payment-status">Waiting for match...</div>
+                <button id="markPaidBtn" class="btn btn-payment" onclick="markPaymentMade()" style="display:none;">
+                    Mark Payment Made
+                </button>
+                <div id="settlementTimer" class="settlement-timer" style="display:none;">
+                    Verifying payment (stub ZK)...<br>
+                    <div class="countdown"><span id="countdown">10</span>s</div>
+                    <small>In production: ZK proof verification would happen here</small>
+                </div>
+            </div>
         </div>
 
         <!-- Order Book Panel -->
@@ -1107,7 +1201,7 @@
             const container = document.getElementById('orderBook');
 
             if (orderBook.orders.length === 0) {
-                container.innerHTML = '<div class="empty-state">No orders in the book</div>';
+                container.innerHTML = '<div class="empty-state">No orders in the book<br><small>Connect wallet and place orders to see them here</small></div>';
                 return;
             }
 
@@ -1117,19 +1211,30 @@
                 return a.created_at - b.created_at;
             });
 
-            container.innerHTML = sortedOrders.map(order => `
-                <div class="order-item ${order.side}">
-                    <div class="order-meta">
-                        <span><strong>#${order.order_id}</strong></span>
-                        <span class="order-price ${order.side}">$${order.price}</span>
-                        <button onclick="cancelOrder(${order.order_id})" class="btn-cancel">Cancel</button>
+            container.innerHTML = sortedOrders.map(order => {
+                const ownerDisplay = order.owner 
+                    ? `${order.owner.slice(0, 4)}...${order.owner.slice(-4)}`
+                    : (order.trader || 'Unknown');
+                
+                const explorerLink = order.tx_signature 
+                    ? `<a href="https://explorer.solana.com/tx/${order.tx_signature}?cluster=devnet" target="_blank" style="color: #00aaff; text-decoration: none;">View TX</a>`
+                    : '';
+
+                return `
+                    <div class="order-item ${order.side}">
+                        <div class="order-meta">
+                            <span><strong>#${order.order_id}</strong></span>
+                            <span class="order-price ${order.side}">$${order.price}</span>
+                            <button onclick="cancelOrder(${order.order_id})" class="btn-cancel">Cancel</button>
+                        </div>
+                        <div class="order-details">
+                            ${order.side.toUpperCase()}: ${ownerDisplay} | ${order.amount} tokens
+                            ${order.order_type ? `| ${order.order_type}` : ''}
+                            ${explorerLink ? `<br>${explorerLink}` : ''}
+                        </div>
                     </div>
-                    <div class="order-details">
-                        ${order.side.toUpperCase()}: ${order.trader} | ${order.amount} tokens
-                        ${order.order_type ? `| Type: ${order.order_type}` : ''}
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function updateVisualization() {
@@ -1138,13 +1243,20 @@
         }
 
         // ================= Order Placement =================
-        function placeAskOrder() {
+        async function placeAskOrder() {
+            if (!phantomWallet || !connectedPubkey) {
+                log('[Error] Please connect Phantom wallet first', 'error');
+                return;
+            }
+
             const trader = document.getElementById('trader').value.trim();
             const amount = parseInt(document.getElementById('amount').value);
             const price = parseInt(document.getElementById('price').value);
+            const paymentMethod = document.getElementById('payment').value || 'PayPal';
+            const tokenMintStr = document.getElementById('tokenMint').value.trim();
 
-            if (!trader || !amount || !price) {
-                log('[Error] All fields are required', 'error');
+            if (!amount || !price) {
+                log('[Error] Amount and price are required', 'error');
                 return;
             }
 
@@ -1153,43 +1265,71 @@
                 return;
             }
 
-            orderBook.last_order_id++;
+            if (!tokenMintStr) {
+                log('[Error] Token mint address is required', 'error');
+                return;
+            }
 
             const orderType = document.getElementById('order-type').value || 'limit';
             
-            const order = {
-                trader,
-                amount,
-                price,
-                side: 'ask',
-                order_type: orderType,
-                created_at: Date.now(),
-                order_id: orderBook.last_order_id
-            };
+            log(`[Order] Placing ASK: ${amount} @ $${price}...`, 'info');
 
-            orderBook.orders.push(order);
-
-            // Insert into CritBit tree
             try {
-                critbitTree.insert(price, orderBook.last_order_id);
-                log(`[Market] Ask order #${order.order_id}: ${amount} @ $${price}`, 'success');
-            } catch (e) {
-                log(`[Error] ${e.message}`, 'error');
-            }
+                // Build and send on-chain transaction
+                const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
+                const programId = new solanaWeb3.PublicKey(appConfig?.programId || 'Bk2pKQsXXvjPChX2G8AWgwoefnwRbTSirtHGnG8yUEdB');
+                const wallet = new solanaWeb3.PublicKey(connectedPubkey);
+                
+                // Get user's token account (ATA)
+                const userTokenAccount = await window.ZK2P.getOrCreateTokenAccount(connection, wallet, tokenMint);
+                
+                const orderTypeValue = orderType === 'fok' ? 4 : 0; // 0 = Limit, 4 = FOK
+                
+                const transaction = await window.ZK2P.createPlaceOrderTransaction({
+                    connection,
+                    programId,
+                    wallet,
+                    tokenMint,
+                    userTokenAccount,
+                    side: 'ask',
+                    price,
+                    quantity: amount,
+                    orderType: orderTypeValue,
+                    paymentMethod
+                });
 
-            renderOrderBook();
-            updateVisualization();
-            updateStats();
+                // Sign and send via Phantom
+                const { signature } = await phantomWallet.signAndSendTransaction(transaction);
+                
+                log(`[Transaction] Sent! Confirming...`, 'info');
+                await connection.confirmTransaction(signature, 'confirmed');
+                
+                log(`[Success] ASK order placed on-chain!`, 'success');
+                log(`[Explorer] https://explorer.solana.com/tx/${signature}?cluster=devnet`, 'info');
+                
+                // Refresh order book after short delay
+                setTimeout(() => window.fetchOrderBookState && window.fetchOrderBookState(), 2000);
+                
+            } catch (error) {
+                log(`[Error] Failed to place order: ${error.message}`, 'error');
+                console.error(error);
+            }
         }
 
-        function placeBidOrder() {
+        async function placeBidOrder() {
+            if (!phantomWallet || !connectedPubkey) {
+                log('[Error] Please connect Phantom wallet first', 'error');
+                return;
+            }
+
             const trader = document.getElementById('trader').value.trim();
             const amount = parseInt(document.getElementById('amount').value);
             const price = parseInt(document.getElementById('price').value);
-            const orderType = document.getElementById('order-type').value || 'limit';
+            const paymentMethod = document.getElementById('payment').value || 'PayPal';
+            const tokenMintStr = document.getElementById('tokenMint').value.trim();
 
-            if (!trader || !amount || !price) {
-                log('[Error] All fields are required', 'error');
+            if (!amount || !price) {
+                log('[Error] Amount and price are required', 'error');
                 return;
             }
 
@@ -1198,37 +1338,55 @@
                 return;
             }
 
-            log(`[${orderType.toUpperCase()}] Bid order: ${amount} @ max $${price}`, 'info');
-
-            // Find matching asks
-            const matchingAsks = orderBook.orders
-                .filter(order => order.side === 'ask' && order.price <= price)
-                .sort((a, b) => {
-                    const priceCmp = a.price - b.price;
-                    if (priceCmp !== 0) return priceCmp;
-                    return a.created_at - b.created_at;
-                });
-
-            // Check total available for FOK
-            const totalAvailable = matchingAsks.reduce((sum, ask) => sum + ask.amount, 0);
-
-            // Execute based on order type (simplified: Limit and FOK only)
-            switch(orderType) {
-                case 'limit':
-                    executeLimitBid(trader, amount, price, matchingAsks);
-                    break;
-                    
-                case 'fok':
-                    executeFOKBid(trader, amount, price, matchingAsks, totalAvailable);
-                    break;
-                    
-                default:
-                    executeLimitBid(trader, amount, price, matchingAsks);
+            if (!tokenMintStr) {
+                log('[Error] Token mint address is required', 'error');
+                return;
             }
 
-            renderOrderBook();
-            updateVisualization();
-            updateStats();
+            const orderType = document.getElementById('order-type').value || 'limit';
+            
+            log(`[Order] Placing BID: ${amount} @ $${price}...`, 'info');
+
+            try {
+                // Build and send on-chain transaction
+                const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
+                const programId = new solanaWeb3.PublicKey(appConfig?.programId || 'Bk2pKQsXXvjPChX2G8AWgwoefnwRbTSirtHGnG8yUEdB');
+                const wallet = new solanaWeb3.PublicKey(connectedPubkey);
+                
+                // Get user's token account (ATA)
+                const userTokenAccount = await window.ZK2P.getOrCreateTokenAccount(connection, wallet, tokenMint);
+                
+                const orderTypeValue = orderType === 'fok' ? 4 : 0; // 0 = Limit, 4 = FOK
+                
+                const transaction = await window.ZK2P.createPlaceOrderTransaction({
+                    connection,
+                    programId,
+                    wallet,
+                    tokenMint,
+                    userTokenAccount,
+                    side: 'bid',
+                    price,
+                    quantity: amount,
+                    orderType: orderTypeValue,
+                    paymentMethod
+                });
+
+                // Sign and send via Phantom
+                const { signature } = await phantomWallet.signAndSendTransaction(transaction);
+                
+                log(`[Transaction] Sent! Confirming...`, 'info');
+                await connection.confirmTransaction(signature, 'confirmed');
+                
+                log(`[Success] BID order placed on-chain!`, 'success');
+                log(`[Explorer] https://explorer.solana.com/tx/${signature}?cluster=devnet`, 'info');
+                
+                // Refresh order book after short delay
+                setTimeout(() => window.fetchOrderBookState && window.fetchOrderBookState(), 2000);
+                
+            } catch (error) {
+                log(`[Error] Failed to place order: ${error.message}`, 'error');
+                console.error(error);
+            }
         }
 
         function executeLimitBid(trader, amount, price, matchingAsks) {
@@ -1260,6 +1418,13 @@
 
             const remaining = amount - fillAmount;
             log(`[Limit] Matched ${fillAmount}/${amount} tokens (1:1 single seller)`, 'success');
+            
+            // Show payment section for P2P settlement
+            if (window.ZK2P && window.ZK2P.showPaymentSection) {
+                // Determine if current user is buyer (placing bid) or seller (had ask order)
+                const isBuyer = true; // User placing bid is the buyer
+                window.ZK2P.showPaymentSection(isBuyer, askOrder.order_id);
+            }
 
             // If remaining, add as resting limit order
             if (remaining > 0) {
@@ -1353,13 +1518,150 @@
             updateStats();
         }
 
+        // ================= Match Orders On-Chain =================
+        async function matchOrdersOnChain() {
+            if (!phantomWallet || !connectedPubkey) {
+                log('[Error] Please connect Phantom wallet first', 'error');
+                return;
+            }
+
+            if (!appConfig) {
+                log('[Error] Config not loaded', 'error');
+                return;
+            }
+
+            const tokenMintStr = document.getElementById('tokenMint')?.value || appConfig.defaultTokenMint;
+            const amount = parseInt(document.getElementById('amount').value) || 100;
+            const price = parseInt(document.getElementById('price').value) || 50;
+
+            log('[Match] Attempting to match orders on-chain...', 'info');
+
+            try {
+                const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
+                const programId = new solanaWeb3.PublicKey(appConfig.programId);
+                const wallet = new solanaWeb3.PublicKey(connectedPubkey);
+
+                // Derive OrderBook PDA
+                const [orderBook] = await solanaWeb3.PublicKey.findProgramAddress(
+                    [Buffer.from('order_book'), tokenMint.toBuffer()],
+                    programId
+                );
+
+                // Build match_order instruction
+                // Instruction discriminator for match_order (you need to get this from the program)
+                const matchOrderDiscriminator = Buffer.from([0x65, 0x4c, 0x8a, 0x9f, 0x23, 0x7d, 0x1e, 0xb2]); // Placeholder
+                
+                // Build instruction data: discriminator + side (1 byte) + quantity (8 bytes) + limit_price (8 bytes) + order_type (1 byte)
+                const instructionData = Buffer.alloc(26);
+                matchOrderDiscriminator.copy(instructionData, 0);
+                instructionData.writeUInt8(0, 8); // Side: 0 = Bid
+                instructionData.writeBigUInt64LE(BigInt(amount), 9); // Quantity
+                instructionData.writeBigUInt64LE(BigInt(price), 17); // Limit price
+                instructionData.writeUInt8(0, 25); // Order type: 0 = Limit
+
+                const instruction = new solanaWeb3.TransactionInstruction({
+                    keys: [
+                        { pubkey: wallet, isSigner: true, isWritable: true },
+                        { pubkey: orderBook, isSigner: false, isWritable: true },
+                        { pubkey: tokenMint, isSigner: false, isWritable: false },
+                        { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+                    ],
+                    programId,
+                    data: instructionData
+                });
+
+                const transaction = new solanaWeb3.Transaction().add(instruction);
+                const { blockhash } = await connection.getLatestBlockhash();
+                transaction.recentBlockhash = blockhash;
+                transaction.feePayer = wallet;
+
+                // Sign and send
+                const { signature } = await phantomWallet.signAndSendTransaction(transaction);
+                
+                log('[Transaction] Match sent! Confirming...', 'info');
+                await connection.confirmTransaction(signature, 'confirmed');
+                
+                log('[Success] Orders matched on-chain!', 'success');
+                log(`[Explorer] https://explorer.solana.com/tx/${signature}?cluster=devnet`, 'info');
+
+                // Show payment section for buyer
+                if (window.ZK2P && window.ZK2P.showPaymentSection) {
+                    const isBuyer = connectedPubkey === appConfig.buyerAddress || 
+                                    connectedPubkey !== appConfig.sellerAddress;
+                    window.ZK2P.showPaymentSection(isBuyer, Date.now());
+                }
+
+                // Refresh order book
+                setTimeout(() => window.fetchOrderBookState && window.fetchOrderBookState(), 2000);
+
+            } catch (error) {
+                log(`[Error] Match failed: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        // ================= Fetch On-Chain OrderBook State =================
+        window.fetchOrderBookState = async function() {
+            if (!appConfig || !appConfig.defaultTokenMint) {
+                log('[OrderBook] Config not loaded yet', 'warning');
+                return;
+            }
+
+            try {
+                const tokenMintStr = document.getElementById('tokenMint')?.value || appConfig.defaultTokenMint;
+                const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
+                const programId = new solanaWeb3.PublicKey(appConfig.programId);
+
+                // Derive OrderBook PDA
+                const [orderBookPda] = await solanaWeb3.PublicKey.findProgramAddress(
+                    [Buffer.from('order_book'), tokenMint.toBuffer()],
+                    programId
+                );
+
+                // Fetch account data
+                const accountInfo = await connection.getAccountInfo(orderBookPda);
+                if (!accountInfo) {
+                    log('[OrderBook] Account not found - needs initialization', 'warning');
+                    orderBook.orders = [];
+                    renderOrderBook();
+                    return;
+                }
+
+                log('[OrderBook] Fetched on-chain data successfully', 'success');
+
+                // Parse order book data (simplified - just update local state)
+                // In a full implementation, you'd deserialize the CritBit tree and orders here
+                // For now, we'll just trigger a re-render
+                renderOrderBook();
+                
+            } catch (error) {
+                log(`[OrderBook] Error fetching: ${error.message}`, 'error');
+                console.error(error);
+            }
+        };
+
         // Initialize
         updateStats();
         window.addEventListener('resize', () => updateVisualization());
+        
+        // Auto-refresh OrderBook every 5 seconds if wallet connected
+        setInterval(async () => {
+            if (phantomWallet && connectedPubkey && appConfig) {
+                await window.fetchOrderBookState();
+            }
+        }, 5000);
     </script>
 
+    <!-- Buffer Polyfill for Browser -->
+    <script src="https://unpkg.com/buffer@6.0.3/index.js"></script>
+    <script>
+        // Make Buffer available globally
+        window.Buffer = buffer.Buffer;
+    </script>
+    
     <!-- Solana Web3.js and Wallet Adapter -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@coral-xyz/anchor@0.29.0/dist/browser/index.js"></script>
     
     <!-- Phantom Wallet Integration -->
     <script>
@@ -1390,6 +1692,8 @@
             return true;
         }
         
+        let appConfig = null;
+        
         async function connectPhantomWallet() {
             try {
                 if (!await detectPhantom()) {
@@ -1403,9 +1707,25 @@
                 
                 log(`[Wallet] Connected: ${connectedPubkey.slice(0, 8)}...${connectedPubkey.slice(-8)}`, 'success');
                 
+                // Load config.json
+                try {
+                    const configResp = await fetch('config.json');
+                    appConfig = await configResp.json();
+                    
+                    // Populate token mint input with default if empty
+                    const tokenMintInput = document.getElementById('tokenMint');
+                    if (tokenMintInput && !tokenMintInput.value) {
+                        tokenMintInput.value = appConfig.defaultTokenMint;
+                    }
+                    
+                    log('[Config] Loaded config.json successfully', 'success');
+                } catch (err) {
+                    log(`[Config] Warning: Could not load config.json - ${err.message}`, 'warning');
+                }
+                
                 // Update UI with connected wallet
-                const walletBtn = document.querySelector('button');
-                if (walletBtn && walletBtn.textContent.includes('Connect')) {
+                const walletBtn = document.getElementById('phantomConnectBtn');
+                if (walletBtn) {
                     walletBtn.textContent = `Connected: ${connectedPubkey.slice(0, 4)}...${connectedPubkey.slice(-4)}`;
                     walletBtn.style.background = 'linear-gradient(135deg, #00ff88, #00aa55)';
                 }
@@ -1413,6 +1733,16 @@
                 // Check balance
                 const balance = await connection.getBalance(new solanaWeb3.PublicKey(connectedPubkey));
                 log(`[Wallet] Balance: ${(balance / solanaWeb3.LAMPORTS_PER_SOL).toFixed(4)} SOL`, 'info');
+                
+                // Identify wallet role (seller or buyer)
+                if (window.ZK2P && window.ZK2P.identifyWalletRole) {
+                    await window.ZK2P.identifyWalletRole();
+                }
+                
+                // Fetch order book state after connection
+                if (window.fetchOrderBookState) {
+                    setTimeout(() => window.fetchOrderBookState(), 1000);
+                }
                 
                 return true;
             } catch (err) {
@@ -1455,6 +1785,10 @@
         
         console.log('[2k2Peer] Phantom wallet integration ready');
         console.log('[2k2Peer] Market Program ID:', PROGRAM_IDS.market);
+        console.log('[2k2Peer] P2P Payment status tracking enabled');
     </script>
+    
+    <!-- On-chain Transaction Integration -->
+    <script src="onchain-transactions.js"></script>
 </body>
 </html>

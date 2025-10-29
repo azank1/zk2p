@@ -7,8 +7,9 @@ const DEVNET_RPC = 'https://api.devnet.solana.com';
 async function main() {
   console.log('=== Creating New SPL Token on Devnet ===\n');
 
-  // Load wallet
-  const walletPath = process.env.HOME + '/.config/solana/id.json';
+  // Load wallet (cross-platform)
+  const homeDir = process.env.HOME || process.env.USERPROFILE;
+  const walletPath = `${homeDir}/.config/solana/id.json`;
   const walletData = JSON.parse(fs.readFileSync(walletPath, 'utf8'));
   const wallet = Keypair.fromSecretKey(Uint8Array.from(walletData));
 
@@ -79,7 +80,11 @@ async function main() {
   console.log('=== Token Creation Complete ===');
   console.log('Token Mint:', mint.toString());
   console.log('Explorer:', `https://explorer.solana.com/address/${mint}?cluster=devnet`);
-  console.log('\nNext step: ts-node scripts/setup-buyer-wallet.ts');
+  console.log('\n=== Next Steps ===');
+  console.log('1. Initialize market: npm run p2p:init-market', mint.toString());
+  console.log('2. Setup buyer:       npm run p2p:setup-buyer');
+  console.log('3. Distribute tokens: npm run p2p:distribute');
+  console.log('4. Run P2P test:      npm run p2p:test');
 }
 
 main().catch(error => {

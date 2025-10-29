@@ -40,6 +40,22 @@ impl OrderBook {
     /// This still supports 50 different price levels, much better than Phase 2A's 10 total orders
     pub const MAX_PRICE_LEVELS: usize = 50;
     
+    /// Space needed for OrderBook initialization (manually calculated for serialized size)
+    /// - market: 32
+    /// - base_mint: 32
+    /// - quote_mint: 32
+    /// - bids: CritBitTree (4 + 4 + 4 + 4 + Vec<CritBitNode>: 4 + 50*26) = 1316
+    /// - asks: CritBitTree (4 + 4 + 4 + 4 + Vec<CritBitNode>: 4 + 50*26) = 1316
+    /// - order_queues: Vec (4 + space for ~35 OrderQueues with 1 Order each)
+    ///   Each OrderQueue: 4 (Vec len) + Order::LEN (139) + total_qty (8) = 151 bytes
+    ///   35 queues × 151 = 5285 bytes
+    /// - next_queue_index: 4
+    /// - total_orders: 8
+    /// - best_bid: 8
+    /// - best_ask: 8
+    /// Total: 8044 bytes (under 10KB limit, room for ~35 price levels)
+    pub const INIT_SPACE: usize = 32 + 32 + 32 + 1316 + 1316 + 4 + 5280 + 4 + 8 + 8 + 8;
+    
     /// Initialize a new order book
     pub fn new(market: Pubkey, base_mint: Pubkey, quote_mint: Pubkey) -> Self {
         // Don't pre-allocate all queues - initialize them on-demand to save space
@@ -78,8 +94,10 @@ impl OrderBook {
             let queue_index = self.next_queue_index;
             self.next_queue_index += 1;
             
-            // Add order to queue
-            self.order_queues[queue_index as usize].push(order);
+            // Create new queue and add order
+            let mut new_queue = OrderQueue::new();
+            new_queue.push(order);
+            self.order_queues.push(new_queue);
             
             // Insert price level into CritBit tree
             tree.insert(order.price, queue_index)?;

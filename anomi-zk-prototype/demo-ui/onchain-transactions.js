@@ -1,6 +1,10 @@
 // On-Chain Transaction Builder for ZK2P Market Program
 // This module creates Solana transactions to interact with the deployed Market program
 
+// Wait for dependencies to load
+(function() {
+    'use strict';
+    
 // Program instruction discriminators (first 8 bytes of instruction data)
 // These are derived from the Anchor instruction name hash
 const INSTRUCTIONS = {
@@ -170,17 +174,188 @@ async function createPlaceOrderTransaction({
  * Helper: Get or create associated token account
  */
 async function getOrCreateTokenAccount(connection, wallet, tokenMint) {
-    // For simplicity, derive the ATA (Associated Token Account)
-    const [ata] = await solanaWeb3.PublicKey.findProgramAddress(
-        [
-            wallet.toBuffer(),
-            solanaWeb3.TOKEN_PROGRAM_ID.toBuffer(),
-            tokenMint.toBuffer(),
-        ],
-        new solanaWeb3.PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL') // SPL Associated Token Program
-    );
+    try {
+        // Derive the ATA (Associated Token Account) address
+        const TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+        const ASSOCIATED_TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+        
+        const [ata] = await solanaWeb3.PublicKey.findProgramAddress(
+            [
+                wallet.toBuffer(),
+                TOKEN_PROGRAM_ID.toBuffer(),
+                tokenMint.toBuffer(),
+            ],
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+        
+        // Check if ATA exists
+        const accountInfo = await connection.getAccountInfo(ata);
+        
+        if (!accountInfo) {
+            console.log(`[ATA] Associated token account not found for ${wallet.toString()}`);
+            console.log(`[ATA] Derived ATA: ${ata.toString()}`);
+            console.log(`[ATA] NOTE: The account needs to be created. The transaction may fail.`);
+            console.log(`[ATA] Please create it manually or ensure it exists before placing orders.`);
+        }
+        
+        return ata;
+        
+    } catch (error) {
+        console.error('[ATA] Error getting token account:', error);
+        throw error;
+    }
+}
+
+/**
+ * P2P Payment Status Tracking Functions
+ * These handle the fiat settlement flow with stub ZK verification
+ */
+
+let currentMatchedOrderId = null;
+
+/**
+ * Mark payment as made (called by buyer after off-chain fiat transfer)
+ */
+async function markPaymentMade(orderId) {
+    if (!window.phantomWallet || !window.connectedPubkey) {
+        if (window.log) window.log('[Payment] Please connect Phantom wallet first', 'error');
+        return;
+    }
     
-    return ata;
+    try {
+        if (window.log) window.log('[Payment] Marking payment as made...', 'info');
+        
+        // Show settlement timer in UI
+        const markPaidBtn = document.getElementById('markPaidBtn');
+        const settlementTimer = document.getElementById('settlementTimer');
+        const paymentStatus = document.getElementById('paymentStatus');
+        
+        if (markPaidBtn) markPaidBtn.style.display = 'none';
+        if (settlementTimer) settlementTimer.style.display = 'block';
+        if (paymentStatus) paymentStatus.textContent = 'Payment marked. Verifying...';
+        
+        // Start 10-second countdown
+        startSettlementTimer(orderId || currentMatchedOrderId);
+        
+    } catch (error) {
+        if (window.log) window.log(`[Payment] Error marking payment: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * 10-second countdown timer for settlement delay
+ */
+function startSettlementTimer(orderId) {
+    let countdown = 10;
+    document.getElementById('countdown').textContent = countdown;
+    
+    const timer = setInterval(() => {
+        countdown--;
+        document.getElementById('countdown').textContent = countdown;
+        
+        if (countdown <= 0) {
+            clearInterval(timer);
+            verifySettlement(orderId);
+        }
+    }, 1000);
+}
+
+/**
+ * Auto-verify settlement after delay (stub ZK proof verification)
+ */
+async function verifySettlement(orderId) {
+    try {
+        if (window.log) {
+            window.log('[Settlement] 10-second delay expired. Verifying payment...', 'info');
+            window.log('[Settlement] In production: ZK proof would be validated here', 'warning');
+        }
+        
+        // Update UI to show verification complete
+        const settlementTimer = document.getElementById('settlementTimer');
+        const paymentStatus = document.getElementById('paymentStatus');
+        
+        if (settlementTimer) settlementTimer.style.display = 'none';
+        if (paymentStatus) {
+            paymentStatus.textContent = '✅ Payment Verified (Stub ZK)';
+            paymentStatus.style.color = '#00ff88';
+        }
+        
+        if (window.log) {
+            window.log('[Settlement] Payment verified! Tokens released to seller.', 'success');
+            window.log('[Settlement] Transaction would be sent on-chain in production', 'info');
+        }
+        
+        // Auto-hide payment section after 5 seconds
+        setTimeout(() => {
+            const paymentSection = document.getElementById('paymentSection');
+            if (paymentSection) paymentSection.style.display = 'none';
+        }, 5000);
+        
+    } catch (error) {
+        if (window.log) window.log(`[Settlement] Verification failed: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Show payment section when order is matched
+ */
+function showPaymentSection(isBuyer, orderId) {
+    currentMatchedOrderId = orderId;
+    const section = document.getElementById('paymentSection');
+    const markPaidBtn = document.getElementById('markPaidBtn');
+    const status = document.getElementById('paymentStatus');
+    
+    if (section) section.style.display = 'block';
+    
+    if (isBuyer) {
+        if (status) status.textContent = 'Order matched! Please transfer fiat payment off-chain.';
+        if (markPaidBtn) markPaidBtn.style.display = 'block';
+        if (window.log) window.log('[Payment] You are the BUYER. Mark payment after sending fiat.', 'warning');
+    } else {
+        if (status) status.textContent = 'Order matched! Waiting for buyer to send payment...';
+        if (markPaidBtn) markPaidBtn.style.display = 'none';
+        if (window.log) window.log('[Payment] You are the SELLER. Waiting for buyer payment...', 'info');
+    }
+}
+
+/**
+ * Identify wallet role (seller or buyer) based on connected address
+ */
+async function identifyWalletRole() {
+    // Use the global variables from index.html
+    if (!window.connectedPubkey) return null;
+    
+    try {
+        // Use appConfig loaded in index.html, or load it here
+        let config = window.appConfig;
+        if (!config) {
+            const response = await fetch('config.json');
+            config = await response.json();
+        }
+        
+        const sellerAddress = config.sellerAddress || '3zWJav4zdy86ZFkZd2iNoF93h28Q5iT2CWGmApjbh6Ue';
+        const buyerAddress = config.buyerAddress || 'BYvrTqzdLAFnyfbNQW7kR6K9vvg3e8119VwxeLDxejhf';
+        
+        let role = 'Unknown';
+        if (window.connectedPubkey === sellerAddress) {
+            role = 'Seller';
+        } else if (window.connectedPubkey === buyerAddress) {
+            role = 'Buyer';
+        }
+        
+        // Update UI
+        const walletRoleDiv = document.getElementById('walletRole');
+        const walletRoleText = document.getElementById('walletRoleText');
+        if (walletRoleDiv && walletRoleText) {
+            walletRoleText.textContent = role;
+            walletRoleDiv.style.display = 'block';
+        }
+        
+        return role;
+    } catch (error) {
+        console.warn('Could not identify wallet role:', error);
+        return null;
+    }
 }
 
 // Export for use in index.html
@@ -189,7 +364,12 @@ if (typeof window !== 'undefined') {
         createPlaceOrderTransaction,
         getOrCreateTokenAccount,
         OrderType,
-        Side
+        Side,
+        markPaymentMade,
+        showPaymentSection,
+        identifyWalletRole
     };
+    console.log('[ZK2P] Transaction module loaded successfully');
 }
 
+})(); // End of IIFE
