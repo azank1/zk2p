@@ -1,1 +1,46 @@
-# Empty .gitignore - including everything
+# Build artifacts (can be regenerated)
+target/
+.anchor/
+**/target/
+**/.anchor/
+
+# Node modules (can be reinstalled)
+node_modules/
+**/node_modules/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Solana testing artifacts
+test-ledger/
+.solana-test-ledger/
+**/test-ledger/
+**/.solana-test-ledger/
+
+# Development artifacts
+*.log
+*.tmp
+*.temp
+
+# TypeScript build info
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Generated files
+**/generated/
+**/dist/
+./cursor
+# Keep essential files:
+# - Source code (programs/, tests/, scripts/)
+# - Configuration (Anchor.toml, Cargo.toml, package.json)
+# - Documentation (README.md, workflow_ANOMI.md)
+# - Tests (all .ts files)
