@@ -208,10 +208,28 @@ npm run p2p:fetch          # View order book state
 
 ## Current Status
 
-✅ All core features implemented  
-✅ 39 tests passing  
-✅ Deployed to Solana devnet  
-✅ P2P testing scripts functional  
-✅ TypeScript configuration fixed  
+✅ **Core Implementation Complete**
+- Market program deployed to devnet
+- CritBit tree order matching operational
+- Escrow system functional
+- P2P payment flow with stubbed ZK layer
+- Demo UI with Phantom wallet integration
+- CLI test suite (4 test scripts)
+
+⚠️ **Testing Phase**
+- UI Buffer polyfill fix applied
+- Two-wallet testing pending
+- OrderStore built but not deployed (optional)
+
+📚 **Quick Start Guides:**
+- [`PROJECT_SUMMARY.md`](PROJECT_SUMMARY.md) - Complete project overview
+- [`docs/QUICK_START_P2P_TEST.md`](docs/QUICK_START_P2P_TEST.md) - Step-by-step testing guide
+- [`docs/DEMO_GUIDE.md`](docs/DEMO_GUIDE.md) - Demo recording instructions
+
+**Verification:**
+```bash
+npm run test:verify-setup  # Check environment
+npm run ui:start           # Start demo UI
+```
 
 See [`../workflow_ANOMI.md`](../workflow_ANOMI.md) for project roadmap.

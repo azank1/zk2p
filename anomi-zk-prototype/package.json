@@ -19,7 +19,11 @@
     "p2p:fetch": "npx ts-node scripts/tests/fetch-orderbook.ts",
     "p2p:place-order": "npx ts-node scripts/tests/place-order-cli.ts",
     "p2p:reset": "npx ts-node scripts/tests/reset-orderbook.ts",
-    "p2p:match": "npx ts-node scripts/tests/manual-match.ts"
+    "p2p:match": "npx ts-node scripts/tests/manual-match.ts",
+    "test:verify-setup": "npx ts-node scripts/tests/verify-devnet-setup.ts",
+    "test:single-wallet": "npx ts-node scripts/tests/test-single-wallet.ts",
+    "test:matching": "npx ts-node scripts/tests/test-matching.ts",
+    "test:payment-flow": "npx ts-node scripts/tests/test-payment-flow.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",

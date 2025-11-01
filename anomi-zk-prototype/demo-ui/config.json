@@ -1,7 +1,10 @@
 {
   "defaultTokenMint": "FRBYvn9SBFNptrDm9enMFEKNxMPkqxztoLbpbcmj2Pzb",
   "programId": "Bk2pKQsXXvjPChX2G8AWgwoefnwRbTSirtHGnG8yUEdB",
+  "orderStoreProgramId": "DjuV2BhfeVSnamUNPQhjY1NxtCqDT8RjG8xyKJAN2spg",
   "rpcUrl": "https://api.devnet.solana.com",
   "sellerAddress": "3zWJav4zdy86ZFkZd2iNoF93h28Q5iT2CWGmApjbh6Ue",
-  "buyerAddress": "BYvrTqzdLAFnyfbNQW7kR6K9vvg3e8119VwxeLDxejhf"
+  "buyerAddress": "BYvrTqzdLAFnyfbNQW7kR6K9vvg3e8119VwxeLDxejhf",
+  "zkFiatModeDefault": true,
+  "settlementDelaySeconds": 10
 }

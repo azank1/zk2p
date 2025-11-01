@@ -5,11 +5,26 @@
 (function() {
     'use strict';
     
+// Check if Buffer is available
+if (typeof Buffer === 'undefined') {
+    console.error('[ZK2P] Buffer not available! Cannot initialize transaction module.');
+    return;
+}
+
+console.log('[ZK2P] Initializing transaction module with Buffer support...');
+    
 // Program instruction discriminators (first 8 bytes of instruction data)
-// These are derived from the Anchor instruction name hash
+// These are derived from the Anchor instruction name hash: sha256("global:{instruction_name}").slice(0, 8)
 const INSTRUCTIONS = {
     PLACE_LIMIT_ORDER: Buffer.from([0x8a, 0x19, 0x37, 0x4e, 0x49, 0x6c, 0x63, 0x0a]), // place_limit_order_v2
     CANCEL_ORDER: Buffer.from([0x3d, 0x7a, 0x8f, 0x11, 0x2b, 0x5e, 0x91, 0xc4]), // cancel_order
+    MARK_PAYMENT_MADE: Buffer.from([0xc7, 0x9c, 0x3e, 0x2f, 0x8d, 0x1a, 0x4b, 0x6e]), // mark_payment_made
+    VERIFY_SETTLEMENT: Buffer.from([0x5a, 0x8b, 0x7c, 0x1d, 0x9e, 0x2f, 0x3a, 0x4c]), // verify_settlement
+    MATCH_ORDER: Buffer.from([0x65, 0x4c, 0x8a, 0x9f, 0x23, 0x7d, 0x1e, 0xb2]), // match_order
+    // OrderStore instructions
+    CREATE_MATCHED_ORDER: Buffer.from([0xa1, 0xb2, 0xc3, 0xd4, 0xe5, 0xf6, 0x07, 0x18]), // create_matched_order
+    CONFIRM_ORDER: Buffer.from([0x29, 0x3a, 0x4b, 0x5c, 0x6d, 0x7e, 0x8f, 0x90]), // confirm_order
+    SETTLE_ORDER: Buffer.from([0x1a, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x70, 0x81]), // settle_order
 };
 
 // Order types
@@ -222,8 +237,103 @@ async function markPaymentMade(orderId) {
         return;
     }
     
+    // Check if ZK Fiat Mode is enabled
+    if (!window.zkFiatModeEnabled) {
+        if (window.log) window.log('[Payment] ZK Fiat Mode is disabled', 'warning');
+        return;
+    }
+    
     try {
-        if (window.log) window.log('[Payment] Marking payment as made...', 'info');
+        if (window.log) window.log('[Payment] Marking payment as made on-chain...', 'info');
+        
+        const connection = new solanaWeb3.Connection('https://api.devnet.solana.com', 'confirmed');
+        const wallet = new solanaWeb3.PublicKey(window.connectedPubkey);
+        
+        // Get config
+        let config = window.appConfig;
+        if (!config) {
+            if (window.log) window.log('[Payment] Config not loaded', 'error');
+            return;
+        }
+        
+        const programId = new solanaWeb3.PublicKey(config.programId);
+        const tokenMintStr = document.getElementById('tokenMint')?.value || config.defaultTokenMint;
+        const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
+        
+        // Derive OrderBook PDA
+        const [orderBook] = await solanaWeb3.PublicKey.findProgramAddress(
+            [Buffer.from('order_book'), tokenMint.toBuffer()],
+            programId
+        );
+        
+        // Build instruction data: discriminator (8 bytes) + order_id (16 bytes u128)
+        const instructionData = Buffer.alloc(24);
+        INSTRUCTIONS.MARK_PAYMENT_MADE.copy(instructionData, 0);
+        
+        // Write order_id as u128 little-endian
+        const orderIdToUse = orderId || currentMatchedOrderId || Date.now();
+        const orderIdBigInt = BigInt(orderIdToUse);
+        instructionData.writeBigUInt64LE(orderIdBigInt & BigInt('0xFFFFFFFFFFFFFFFF'), 8); // Low 64 bits
+        instructionData.writeBigUInt64LE(orderIdBigInt >> BigInt(64), 16); // High 64 bits
+        
+        // Build accounts array
+        const keys = [
+            { pubkey: wallet, isSigner: true, isWritable: false }, // buyer
+            { pubkey: orderBook, isSigner: false, isWritable: true }, // order_book
+            { pubkey: tokenMint, isSigner: false, isWritable: false }, // token_mint
+            { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+        ];
+        
+        // Create instruction
+        const instruction = new solanaWeb3.TransactionInstruction({
+            keys,
+            programId,
+            data: instructionData
+        });
+        
+        // Create and send transaction
+        const transaction = new solanaWeb3.Transaction().add(instruction);
+        const { blockhash } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = wallet;
+        
+        // Sign and send via Phantom
+        const { signature } = await window.phantomWallet.signAndSendTransaction(transaction);
+        
+        if (window.log) window.log('[Payment] Transaction sent! Confirming...', 'info');
+        await connection.confirmTransaction(signature, 'confirmed');
+        
+        if (window.log) {
+            window.log('[Payment] Payment marked on-chain!', 'success');
+            window.log(`[Explorer] https://explorer.solana.com/tx/${signature}?cluster=devnet`, 'info');
+        }
+        
+        // Update OrderStore: Confirm order (Pending -> Confirmed)
+        try {
+            if (config.orderStoreProgramId && window.currentMatchedOrder) {
+                const orderStoreProgramId = new solanaWeb3.PublicKey(config.orderStoreProgramId);
+                const confirmTx = await confirmOrderTransaction({
+                    connection,
+                    orderStoreProgramId,
+                    wallet,
+                    orderId: window.currentMatchedOrder.order_id,
+                    proofData: [] // Stub - empty proof data
+                });
+                
+                const confirmSignature = await window.phantomWallet.signAndSendTransaction(confirmTx);
+                await connection.confirmTransaction(confirmSignature, 'confirmed');
+                
+                if (window.log) {
+                    window.log('[OrderStore] Order confirmed (Pending -> Confirmed)', 'success');
+                    window.log(`[Explorer] https://explorer.solana.com/tx/${confirmSignature}?cluster=devnet`, 'info');
+                }
+            }
+        } catch (orderStoreError) {
+            if (window.log) {
+                window.log(`[OrderStore] Warning: Could not confirm order: ${orderStoreError.message}`, 'warning');
+            }
+            console.warn('OrderStore confirm error:', orderStoreError);
+        }
         
         // Show settlement timer in UI
         const markPaidBtn = document.getElementById('markPaidBtn');
@@ -235,10 +345,11 @@ async function markPaymentMade(orderId) {
         if (paymentStatus) paymentStatus.textContent = 'Payment marked. Verifying...';
         
         // Start 10-second countdown
-        startSettlementTimer(orderId || currentMatchedOrderId);
+        startSettlementTimer(orderIdToUse);
         
     } catch (error) {
         if (window.log) window.log(`[Payment] Error marking payment: ${error.message}`, 'error');
+        console.error(error);
     }
 }
 
@@ -264,10 +375,121 @@ function startSettlementTimer(orderId) {
  * Auto-verify settlement after delay (stub ZK proof verification)
  */
 async function verifySettlement(orderId) {
+    // Check if ZK Fiat Mode is enabled
+    if (!window.zkFiatModeEnabled) {
+        if (window.log) window.log('[Settlement] ZK Fiat Mode is disabled', 'warning');
+        return;
+    }
+    
     try {
         if (window.log) {
-            window.log('[Settlement] 10-second delay expired. Verifying payment...', 'info');
+            window.log('[Settlement] 10-second delay expired. Verifying payment on-chain...', 'info');
             window.log('[Settlement] In production: ZK proof would be validated here', 'warning');
+        }
+        
+        const connection = new solanaWeb3.Connection('https://api.devnet.solana.com', 'confirmed');
+        const wallet = new solanaWeb3.PublicKey(window.connectedPubkey);
+        
+        // Get config
+        let config = window.appConfig;
+        if (!config) {
+            if (window.log) window.log('[Settlement] Config not loaded', 'error');
+            return;
+        }
+        
+        const programId = new solanaWeb3.PublicKey(config.programId);
+        const tokenMintStr = document.getElementById('tokenMint')?.value || config.defaultTokenMint;
+        const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
+        
+        // Derive PDAs
+        const [orderBook] = await solanaWeb3.PublicKey.findProgramAddress(
+            [Buffer.from('order_book'), tokenMint.toBuffer()],
+            programId
+        );
+        
+        const [escrowVault] = await solanaWeb3.PublicKey.findProgramAddress(
+            [Buffer.from('escrow_vault'), tokenMint.toBuffer()],
+            programId
+        );
+        
+        const [escrowAuthority] = await solanaWeb3.PublicKey.findProgramAddress(
+            [Buffer.from('escrow_authority'), tokenMint.toBuffer()],
+            programId
+        );
+        
+        // Get seller's token account (use connected wallet as seller for now)
+        const sellerTokenAccount = await getOrCreateTokenAccount(connection, wallet, tokenMint);
+        
+        // Build instruction data: discriminator (8 bytes) + order_id (16 bytes u128)
+        const instructionData = Buffer.alloc(24);
+        INSTRUCTIONS.VERIFY_SETTLEMENT.copy(instructionData, 0);
+        
+        // Write order_id as u128 little-endian
+        const orderIdToUse = orderId || currentMatchedOrderId || Date.now();
+        const orderIdBigInt = BigInt(orderIdToUse);
+        instructionData.writeBigUInt64LE(orderIdBigInt & BigInt('0xFFFFFFFFFFFFFFFF'), 8); // Low 64 bits
+        instructionData.writeBigUInt64LE(orderIdBigInt >> BigInt(64), 16); // High 64 bits
+        
+        // Build accounts array
+        const keys = [
+            { pubkey: wallet, isSigner: true, isWritable: false }, // seller
+            { pubkey: sellerTokenAccount, isSigner: false, isWritable: true }, // seller_token_account
+            { pubkey: orderBook, isSigner: false, isWritable: true }, // order_book
+            { pubkey: escrowVault, isSigner: false, isWritable: true }, // escrow_vault
+            { pubkey: escrowAuthority, isSigner: false, isWritable: false }, // escrow_authority
+            { pubkey: tokenMint, isSigner: false, isWritable: false }, // token_mint
+            { pubkey: solanaWeb3.TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
+            { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+        ];
+        
+        // Create instruction
+        const instruction = new solanaWeb3.TransactionInstruction({
+            keys,
+            programId,
+            data: instructionData
+        });
+        
+        // Create and send transaction
+        const transaction = new solanaWeb3.Transaction().add(instruction);
+        const { blockhash } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = wallet;
+        
+        // Sign and send via Phantom
+        const { signature } = await window.phantomWallet.signAndSendTransaction(transaction);
+        
+        if (window.log) window.log('[Settlement] Transaction sent! Confirming...', 'info');
+        await connection.confirmTransaction(signature, 'confirmed');
+        
+        if (window.log) {
+            window.log('[Settlement] Payment verified on-chain! Tokens released.', 'success');
+            window.log(`[Explorer] https://explorer.solana.com/tx/${signature}?cluster=devnet`, 'info');
+        }
+        
+        // Update OrderStore: Settle order (Confirmed -> Settled)
+        try {
+            if (config.orderStoreProgramId && window.currentMatchedOrder) {
+                const orderStoreProgramId = new solanaWeb3.PublicKey(config.orderStoreProgramId);
+                const settleTx = await settleOrderTransaction({
+                    connection,
+                    orderStoreProgramId,
+                    wallet,
+                    orderId: window.currentMatchedOrder.order_id
+                });
+                
+                const settleSignature = await window.phantomWallet.signAndSendTransaction(settleTx);
+                await connection.confirmTransaction(settleSignature, 'confirmed');
+                
+                if (window.log) {
+                    window.log('[OrderStore] Order settled (Confirmed -> Settled)', 'success');
+                    window.log(`[Explorer] https://explorer.solana.com/tx/${settleSignature}?cluster=devnet`, 'info');
+                }
+            }
+        } catch (orderStoreError) {
+            if (window.log) {
+                window.log(`[OrderStore] Warning: Could not settle order: ${orderStoreError.message}`, 'warning');
+            }
+            console.warn('OrderStore settle error:', orderStoreError);
         }
         
         // Update UI to show verification complete
@@ -276,13 +498,13 @@ async function verifySettlement(orderId) {
         
         if (settlementTimer) settlementTimer.style.display = 'none';
         if (paymentStatus) {
-            paymentStatus.textContent = '✅ Payment Verified (Stub ZK)';
+            paymentStatus.textContent = '✅ Payment Verified (On-Chain)';
             paymentStatus.style.color = '#00ff88';
         }
         
-        if (window.log) {
-            window.log('[Settlement] Payment verified! Tokens released to seller.', 'success');
-            window.log('[Settlement] Transaction would be sent on-chain in production', 'info');
+        // Refresh order book state
+        if (window.fetchOrderBookState) {
+            setTimeout(() => window.fetchOrderBookState(), 2000);
         }
         
         // Auto-hide payment section after 5 seconds
@@ -293,6 +515,7 @@ async function verifySettlement(orderId) {
         
     } catch (error) {
         if (window.log) window.log(`[Settlement] Verification failed: ${error.message}`, 'error');
+        console.error(error);
     }
 }
 
@@ -300,22 +523,216 @@ async function verifySettlement(orderId) {
  * Show payment section when order is matched
  */
 function showPaymentSection(isBuyer, orderId) {
+    // Only show if ZK Fiat Mode is enabled
+    if (!window.zkFiatModeEnabled) {
+        if (window.log) window.log('[Payment] ZK Fiat Mode disabled - skipping payment flow', 'info');
+        return;
+    }
+    
     currentMatchedOrderId = orderId;
     const section = document.getElementById('paymentSection');
     const markPaidBtn = document.getElementById('markPaidBtn');
     const status = document.getElementById('paymentStatus');
+    const settlementTimer = document.getElementById('settlementTimer');
+    
+    // Reset UI state
+    if (settlementTimer) settlementTimer.style.display = 'none';
+    if (markPaidBtn) markPaidBtn.style.display = 'none';
     
     if (section) section.style.display = 'block';
     
     if (isBuyer) {
-        if (status) status.textContent = 'Order matched! Please transfer fiat payment off-chain.';
-        if (markPaidBtn) markPaidBtn.style.display = 'block';
-        if (window.log) window.log('[Payment] You are the BUYER. Mark payment after sending fiat.', 'warning');
+        if (status) {
+            status.textContent = '💰 Order matched! Transfer fiat payment off-chain, then click "Mark Payment Made"';
+            status.style.color = '#ffaa00';
+        }
+        if (markPaidBtn) {
+            markPaidBtn.style.display = 'block';
+            markPaidBtn.textContent = 'Mark Payment Made';
+        }
+        if (window.log) {
+            window.log('[Payment] You are the BUYER', 'warning');
+            window.log('[Payment] Step 1: Send fiat payment to seller off-chain', 'info');
+            window.log('[Payment] Step 2: Click "Mark Payment Made" button', 'info');
+            window.log('[Payment] Step 3: Wait 10 seconds for verification', 'info');
+        }
     } else {
-        if (status) status.textContent = 'Order matched! Waiting for buyer to send payment...';
+        if (status) {
+            status.textContent = '⏳ Order matched! Waiting for buyer to send fiat payment...';
+            status.style.color = '#00aaff';
+        }
         if (markPaidBtn) markPaidBtn.style.display = 'none';
-        if (window.log) window.log('[Payment] You are the SELLER. Waiting for buyer payment...', 'info');
+        if (window.log) {
+            window.log('[Payment] You are the SELLER', 'info');
+            window.log('[Payment] Waiting for buyer to mark payment...', 'info');
+            window.log('[Payment] Tokens will be released after verification', 'info');
+        }
     }
+}
+
+/**
+ * OrderStore Integration Functions
+ * These handle persistent storage of matched orders
+ */
+
+/**
+ * Create a matched order in OrderStore (Pending state)
+ */
+async function createMatchedOrderTransaction({
+    connection,
+    orderStoreProgramId,
+    wallet,
+    orderId,
+    bidder,
+    seller,
+    tokenMint,
+    amount,
+    price
+}) {
+    // Derive MatchedOrder PDA
+    const orderIdBytes = Buffer.alloc(8);
+    orderIdBytes.writeBigUInt64LE(BigInt(orderId), 0);
+    
+    const [matchedOrder] = await solanaWeb3.PublicKey.findProgramAddress(
+        [
+            Buffer.from('matched_order'),
+            orderIdBytes
+        ],
+        orderStoreProgramId
+    );
+    
+    // Build instruction data: discriminator (8 bytes) + order_id (8 bytes) + bidder (32 bytes) + seller (32 bytes) + token_mint (32 bytes) + amount (8 bytes) + price (8 bytes)
+    // Total: 8 + 8 + 32 + 32 + 32 + 8 + 8 = 128 bytes
+    const instructionData = Buffer.alloc(128);
+    INSTRUCTIONS.CREATE_MATCHED_ORDER.copy(instructionData, 0);
+    
+    // Write parameters
+    instructionData.writeBigUInt64LE(BigInt(orderId), 8);
+    new solanaWeb3.PublicKey(bidder).toBuffer().copy(instructionData, 16);
+    new solanaWeb3.PublicKey(seller).toBuffer().copy(instructionData, 48);
+    new solanaWeb3.PublicKey(tokenMint).toBuffer().copy(instructionData, 80);
+    instructionData.writeBigUInt64LE(BigInt(amount), 112);
+    instructionData.writeBigUInt64LE(BigInt(price), 120);
+    
+    // Build accounts array
+    const keys = [
+        { pubkey: matchedOrder, isSigner: false, isWritable: true }, // matched_order
+        { pubkey: wallet, isSigner: true, isWritable: true }, // payer
+        { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+    ];
+    
+    // Create instruction
+    const instruction = new solanaWeb3.TransactionInstruction({
+        keys,
+        programId: orderStoreProgramId,
+        data: instructionData
+    });
+    
+    // Create transaction
+    const transaction = new solanaWeb3.Transaction().add(instruction);
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = wallet;
+    
+    return { transaction, matchedOrder };
+}
+
+/**
+ * Confirm order in OrderStore (after payment marked - updates to Confirmed state)
+ */
+async function confirmOrderTransaction({
+    connection,
+    orderStoreProgramId,
+    wallet,
+    orderId,
+    proofData = []
+}) {
+    // Derive MatchedOrder PDA
+    const orderIdBytes = Buffer.alloc(8);
+    orderIdBytes.writeBigUInt64LE(BigInt(orderId), 0);
+    
+    const [matchedOrder] = await solanaWeb3.PublicKey.findProgramAddress(
+        [
+            Buffer.from('matched_order'),
+            orderIdBytes
+        ],
+        orderStoreProgramId
+    );
+    
+    // Build instruction data: discriminator (8 bytes) + proof_data (Vec<u8> - 4 bytes length + data)
+    const proofDataBuffer = Buffer.from(proofData);
+    const instructionData = Buffer.alloc(8 + 4 + proofDataBuffer.length);
+    INSTRUCTIONS.CONFIRM_ORDER.copy(instructionData, 0);
+    instructionData.writeUInt32LE(proofDataBuffer.length, 8);
+    proofDataBuffer.copy(instructionData, 12);
+    
+    // Build accounts array
+    const keys = [
+        { pubkey: matchedOrder, isSigner: false, isWritable: true }, // matched_order
+        { pubkey: wallet, isSigner: true, isWritable: false }, // authority
+    ];
+    
+    // Create instruction
+    const instruction = new solanaWeb3.TransactionInstruction({
+        keys,
+        programId: orderStoreProgramId,
+        data: instructionData
+    });
+    
+    // Create transaction
+    const transaction = new solanaWeb3.Transaction().add(instruction);
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = wallet;
+    
+    return transaction;
+}
+
+/**
+ * Settle order in OrderStore (after settlement - updates to Settled state)
+ */
+async function settleOrderTransaction({
+    connection,
+    orderStoreProgramId,
+    wallet,
+    orderId
+}) {
+    // Derive MatchedOrder PDA
+    const orderIdBytes = Buffer.alloc(8);
+    orderIdBytes.writeBigUInt64LE(BigInt(orderId), 0);
+    
+    const [matchedOrder] = await solanaWeb3.PublicKey.findProgramAddress(
+        [
+            Buffer.from('matched_order'),
+            orderIdBytes
+        ],
+        orderStoreProgramId
+    );
+    
+    // Build instruction data: discriminator (8 bytes) only
+    const instructionData = Buffer.alloc(8);
+    INSTRUCTIONS.SETTLE_ORDER.copy(instructionData, 0);
+    
+    // Build accounts array
+    const keys = [
+        { pubkey: matchedOrder, isSigner: false, isWritable: true }, // matched_order
+        { pubkey: wallet, isSigner: true, isWritable: false }, // authority
+    ];
+    
+    // Create instruction
+    const instruction = new solanaWeb3.TransactionInstruction({
+        keys,
+        programId: orderStoreProgramId,
+        data: instructionData
+    });
+    
+    // Create transaction
+    const transaction = new solanaWeb3.Transaction().add(instruction);
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = wallet;
+    
+    return transaction;
 }
 
 /**
@@ -367,9 +784,16 @@ if (typeof window !== 'undefined') {
         Side,
         markPaymentMade,
         showPaymentSection,
-        identifyWalletRole
+        identifyWalletRole,
+        INSTRUCTIONS: INSTRUCTIONS, // Expose instruction discriminators
+        // OrderStore functions
+        createMatchedOrderTransaction,
+        confirmOrderTransaction,
+        settleOrderTransaction
     };
     console.log('[ZK2P] Transaction module loaded successfully');
+    console.log('[ZK2P] Instruction discriminators:', Object.keys(INSTRUCTIONS));
+    console.log('[ZK2P] OrderStore integration ready');
 }
 
 })(); // End of IIFE

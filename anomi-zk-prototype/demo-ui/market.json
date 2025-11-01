@@ -1,0 +1,1457 @@
+{
+  "address": "Bk2pKQsXXvjPChX2G8AWgwoefnwRbTSirtHGnG8yUEdB",
+  "metadata": {
+    "name": "market",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Market Program - Stub for matching engine that creates MatchedOrder events"
+  },
+  "instructions": [
+    {
+      "name": "cancel_order",
+      "docs": [
+        "Cancel an order and return escrowed tokens"
+      ],
+      "discriminator": [
+        95,
+        129,
+        237,
+        240,
+        8,
+        49,
+        223,
+        132
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner_token_account",
+          "writable": true
+        },
+        {
+          "name": "escrow_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "order_book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "order_id",
+          "type": "u128"
+        },
+        {
+          "name": "side",
+          "type": {
+            "defined": {
+              "name": "Side"
+            }
+          }
+        },
+        {
+          "name": "price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_escrow_vault",
+      "docs": [
+        "Initialize the escrow vault for a specific token mint"
+      ],
+      "discriminator": [
+        61,
+        154,
+        64,
+        227,
+        167,
+        114,
+        244,
+        221
+      ],
+      "accounts": [
+        {
+          "name": "escrow_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_authority",
+          "docs": [
+            "PDA that will have authority over the escrow vault"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_market",
+      "docs": [
+        "Initialize the market account"
+      ],
+      "discriminator": [
+        35,
+        35,
+        189,
+        193,
+        155,
+        48,
+        170,
+        203
+      ],
+      "accounts": [
+        {
+          "name": "market",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "authority"
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_order_book_v2",
+      "docs": [
+        "Initialize order book with CritBit tree"
+      ],
+      "discriminator": [
+        95,
+        111,
+        162,
+        97,
+        161,
+        109,
+        183,
+        50
+      ],
+      "accounts": [
+        {
+          "name": "order_book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "mark_payment_made",
+      "docs": [
+        "Mark payment as made by buyer (P2P fiat settlement stub)"
+      ],
+      "discriminator": [
+        157,
+        12,
+        146,
+        245,
+        68,
+        8,
+        140,
+        31
+      ],
+      "accounts": [
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "order_book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "order_id",
+          "type": "u128"
+        }
+      ]
+    },
+    {
+      "name": "match_order",
+      "docs": [
+        "Match an order with advanced order type handling"
+      ],
+      "discriminator": [
+        95,
+        230,
+        21,
+        6,
+        114,
+        23,
+        41,
+        111
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "order_book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "side",
+          "type": {
+            "defined": {
+              "name": "Side"
+            }
+          }
+        },
+        {
+          "name": "quantity",
+          "type": "u64"
+        },
+        {
+          "name": "limit_price",
+          "type": "u64"
+        },
+        {
+          "name": "order_type",
+          "type": {
+            "defined": {
+              "name": "OrderType"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "place_limit_order_v2",
+      "docs": [
+        "Place a limit order"
+      ],
+      "discriminator": [
+        248,
+        244,
+        137,
+        13,
+        136,
+        63,
+        227,
+        240
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner_token_account",
+          "writable": true
+        },
+        {
+          "name": "escrow_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "order_book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "side",
+          "type": {
+            "defined": {
+              "name": "Side"
+            }
+          }
+        },
+        {
+          "name": "price",
+          "type": "u64"
+        },
+        {
+          "name": "quantity",
+          "type": "u64"
+        },
+        {
+          "name": "order_type",
+          "type": {
+            "defined": {
+              "name": "OrderType"
+            }
+          }
+        },
+        {
+          "name": "client_order_id",
+          "type": "u64"
+        },
+        {
+          "name": "payment_method",
+          "type": "string"
+        }
+      ],
+      "returns": "u128"
+    },
+    {
+      "name": "reset_order_book",
+      "docs": [
+        "Reset the order book (close and allow re-init with new structure)"
+      ],
+      "discriminator": [
+        45,
+        214,
+        136,
+        4,
+        130,
+        162,
+        88,
+        179
+      ],
+      "accounts": [
+        {
+          "name": "order_book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "verify_settlement",
+      "docs": [
+        "Verify settlement after delay and release tokens (stub ZK verification)"
+      ],
+      "discriminator": [
+        167,
+        56,
+        144,
+        198,
+        193,
+        17,
+        187,
+        204
+      ],
+      "accounts": [
+        {
+          "name": "order_book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "seller_token_account",
+          "writable": true
+        },
+        {
+          "name": "escrow_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "order_id",
+          "type": "u128"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Market",
+      "discriminator": [
+        219,
+        190,
+        213,
+        55,
+        0,
+        227,
+        198,
+        154
+      ]
+    },
+    {
+      "name": "OrderBook",
+      "discriminator": [
+        55,
+        230,
+        125,
+        218,
+        149,
+        39,
+        65,
+        248
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidPrice",
+      "msg": "Price must be greater than zero"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidTokenAccountOwner",
+      "msg": "Token account owner does not match seller"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidMint",
+      "msg": "Token mint does not match expected mint"
+    },
+    {
+      "code": 6004,
+      "name": "UnauthorizedCaller",
+      "msg": "Unauthorized caller - only OrderProcessor can release escrow"
+    },
+    {
+      "code": 6005,
+      "name": "UnauthorizedCancellation",
+      "msg": "Unauthorized cancellation - only order owner can cancel"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidProgramId",
+      "msg": "Invalid program ID"
+    },
+    {
+      "code": 6007,
+      "name": "OrderBookFull",
+      "msg": "Order book is full"
+    },
+    {
+      "code": 6008,
+      "name": "OrderNotFound",
+      "msg": "Order not found"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidSide",
+      "msg": "Invalid order side"
+    },
+    {
+      "code": 6010,
+      "name": "NoMatchingOrders",
+      "msg": "No matching orders found for this bid"
+    },
+    {
+      "code": 6011,
+      "name": "SelfTradeNotAllowed",
+      "msg": "Self-trade not allowed"
+    },
+    {
+      "code": 6012,
+      "name": "PostOnlyWouldMatch",
+      "msg": "Post-only order would match immediately"
+    },
+    {
+      "code": 6013,
+      "name": "FillOrKillNotFilled",
+      "msg": "Fill-or-kill order cannot be fully filled"
+    },
+    {
+      "code": 6014,
+      "name": "PaymentMethodTooLong",
+      "msg": "Payment method string is too long (max 100 characters)"
+    },
+    {
+      "code": 6015,
+      "name": "UnauthorizedAction",
+      "msg": "Unauthorized action - only order owner can perform this"
+    },
+    {
+      "code": 6016,
+      "name": "SettlementDelayNotExpired",
+      "msg": "Settlement delay has not expired yet"
+    }
+  ],
+  "types": [
+    {
+      "name": "CritBitNode",
+      "docs": [
+        "Node in the CritBit tree"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "docs": [
+              "Key (price for orders)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "order_index",
+            "docs": [
+              "Index of the first order at this price in the order slab"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "parent",
+            "docs": [
+              "Parent node index"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "left",
+            "docs": [
+              "Left child index (lower prices)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "right",
+            "docs": [
+              "Right child index (higher prices)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "prefix_len",
+            "docs": [
+              "Critical bit position"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "is_leaf",
+            "docs": [
+              "Is this a leaf node?"
+            ],
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CritBitTree",
+      "docs": [
+        "CritBit tree for managing price levels"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "docs": [
+              "Root node index"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "leaf_count",
+            "docs": [
+              "Number of leaf nodes (price levels)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "free_list",
+            "docs": [
+              "Next free node index"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "nodes",
+            "docs": [
+              "Nodes (preallocated array)"
+            ],
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "CritBitNode"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Market",
+      "docs": [
+        "Market account for tracking global state"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "next_order_sequence",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Order",
+      "docs": [
+        "Individual order in the order book"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "order_id",
+            "docs": [
+              "Unique order ID (128-bit for global uniqueness)"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "owner",
+            "docs": [
+              "Owner of the order"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "quantity",
+            "docs": [
+              "Quantity of base token (remaining to be filled)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "original_quantity",
+            "docs": [
+              "Original quantity (for tracking fills)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "price",
+            "docs": [
+              "Price in quote token per base token (scaled by 1e6)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "Unix timestamp when order was created"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "order_type",
+            "docs": [
+              "Type of order"
+            ],
+            "type": {
+              "defined": {
+                "name": "OrderType"
+              }
+            }
+          },
+          {
+            "name": "side",
+            "docs": [
+              "Side (Bid or Ask)"
+            ],
+            "type": {
+              "defined": {
+                "name": "Side"
+              }
+            }
+          },
+          {
+            "name": "client_order_id",
+            "docs": [
+              "Client-assigned order ID for tracking"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "payment_method",
+            "docs": [
+              "Payment method (for off-chain settlement)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "payment_status",
+            "docs": [
+              "Payment status for matched orders"
+            ],
+            "type": {
+              "defined": {
+                "name": "PaymentStatus"
+              }
+            }
+          },
+          {
+            "name": "payment_marked_timestamp",
+            "docs": [
+              "Timestamp when buyer marked payment as made"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "settlement_timestamp",
+            "docs": [
+              "Timestamp when settlement delay expires (10 seconds after marked)"
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderBook",
+      "docs": [
+        "Order book with CritBit tree for efficient price-level management"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "docs": [
+              "Market this order book belongs to"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "base_mint",
+            "docs": [
+              "Token mint for the base asset"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "docs": [
+              "Token mint for the quote asset"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "bids",
+            "docs": [
+              "Bid side (buy orders) - CritBit tree"
+            ],
+            "type": {
+              "defined": {
+                "name": "CritBitTree"
+              }
+            }
+          },
+          {
+            "name": "asks",
+            "docs": [
+              "Ask side (sell orders) - CritBit tree"
+            ],
+            "type": {
+              "defined": {
+                "name": "CritBitTree"
+              }
+            }
+          },
+          {
+            "name": "order_queues",
+            "docs": [
+              "Order queues (slab allocator style)",
+              "Index in CritBit points to this array"
+            ],
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "OrderQueue"
+                }
+              }
+            }
+          },
+          {
+            "name": "next_queue_index",
+            "docs": [
+              "Next free slot in order_queues"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "total_orders",
+            "docs": [
+              "Total number of active orders"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "best_bid",
+            "docs": [
+              "Best bid price (cached for quick access)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "best_ask",
+            "docs": [
+              "Best ask price (cached for quick access)"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderQueue",
+      "docs": [
+        "Order queue at a specific price level",
+        "This is a slab allocator-style structure"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "orders",
+            "docs": [
+              "Orders at this price level (FIFO queue)"
+            ],
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Order"
+                }
+              }
+            }
+          },
+          {
+            "name": "total_quantity",
+            "docs": [
+              "Total quantity at this price level"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderType",
+      "docs": [
+        "Order types supported by the matching engine"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Limit"
+          },
+          {
+            "name": "Market"
+          },
+          {
+            "name": "PostOnly"
+          },
+          {
+            "name": "ImmediateOrCancel"
+          },
+          {
+            "name": "FillOrKill"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentStatus",
+      "docs": [
+        "Payment status for P2P fiat settlement (stub ZK verification)"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "PaymentMarked"
+          },
+          {
+            "name": "SettlementDelay"
+          },
+          {
+            "name": "Verified"
+          },
+          {
+            "name": "Disputed"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Side",
+      "docs": [
+        "Side of the order book"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Bid"
+          },
+          {
+            "name": "Ask"
+          }
+        ]
+      }
+    }
+  ]
+}

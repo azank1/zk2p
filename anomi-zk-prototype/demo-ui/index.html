@@ -276,6 +276,40 @@
             color: #00aaff;
         }
 
+        /* Toggle Switch Styling */
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: rgba(102, 102, 102, 0.5);
+            border-radius: 13px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .toggle-switch.active {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+            border-color: #00ff88;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(24px);
+        }
+
         /* Stats */
         .stats {
             display: grid;
@@ -592,6 +626,26 @@
             <!-- Wallet Role Indicator -->
             <div id="walletRole" class="wallet-role" style="display:none;">
                 Role: <span id="walletRoleText">Unknown</span>
+            </div>
+            
+            <!-- Wallet Balance Display -->
+            <div id="walletBalance" class="wallet-role" style="display:none;">
+                <div>SOL: <span id="solBalance">0</span></div>
+                <div>Tokens: <span id="tokenBalance">0</span></div>
+            </div>
+            
+            <!-- ZK Fiat Mode Toggle -->
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+                    <span>P2P Fiat Settlement (Stub ZK)</span>
+                    <input type="checkbox" id="zkFiatModeToggle" checked style="display: none;">
+                    <div class="toggle-switch" id="toggleSwitch">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </label>
+                <small style="color: #999; font-size: 0.75em; margin-top: 5px; display: block;">
+                    When enabled, matched orders require fiat payment confirmation
+                </small>
             </div>
             
             <!-- Token Mint Configuration -->
@@ -1533,6 +1587,7 @@
             const tokenMintStr = document.getElementById('tokenMint')?.value || appConfig.defaultTokenMint;
             const amount = parseInt(document.getElementById('amount').value) || 100;
             const price = parseInt(document.getElementById('price').value) || 50;
+            const orderType = document.getElementById('order-type')?.value || 'limit';
 
             log('[Match] Attempting to match orders on-chain...', 'info');
 
@@ -1547,24 +1602,34 @@
                     programId
                 );
 
-                // Build match_order instruction
-                // Instruction discriminator for match_order (you need to get this from the program)
-                const matchOrderDiscriminator = Buffer.from([0x65, 0x4c, 0x8a, 0x9f, 0x23, 0x7d, 0x1e, 0xb2]); // Placeholder
-                
-                // Build instruction data: discriminator + side (1 byte) + quantity (8 bytes) + limit_price (8 bytes) + order_type (1 byte)
+                // Build match_order instruction using discriminator from onchain-transactions.js
+                // Instruction data: discriminator (8 bytes) + side (1 byte) + quantity (8 bytes) + limit_price (8 bytes) + order_type (1 byte)
                 const instructionData = Buffer.alloc(26);
-                matchOrderDiscriminator.copy(instructionData, 0);
-                instructionData.writeUInt8(0, 8); // Side: 0 = Bid
+                
+                // Use MATCH_ORDER discriminator from window.ZK2P.INSTRUCTIONS if available
+                let matchDiscriminator;
+                if (window.ZK2P && window.ZK2P.INSTRUCTIONS && window.ZK2P.INSTRUCTIONS.MATCH_ORDER) {
+                    matchDiscriminator = window.ZK2P.INSTRUCTIONS.MATCH_ORDER;
+                } else {
+                    // Fallback discriminator
+                    matchDiscriminator = Buffer.from([0x65, 0x4c, 0x8a, 0x9f, 0x23, 0x7d, 0x1e, 0xb2]);
+                }
+                
+                matchDiscriminator.copy(instructionData, 0);
+                instructionData.writeUInt8(0, 8); // Side: 0 = Bid (buyer matching against asks)
                 instructionData.writeBigUInt64LE(BigInt(amount), 9); // Quantity
                 instructionData.writeBigUInt64LE(BigInt(price), 17); // Limit price
-                instructionData.writeUInt8(0, 25); // Order type: 0 = Limit
+                
+                // Order type: 0 = Limit, 4 = FOK
+                const orderTypeValue = orderType === 'fok' ? 4 : 0;
+                instructionData.writeUInt8(orderTypeValue, 25);
 
                 const instruction = new solanaWeb3.TransactionInstruction({
                     keys: [
-                        { pubkey: wallet, isSigner: true, isWritable: true },
-                        { pubkey: orderBook, isSigner: false, isWritable: true },
-                        { pubkey: tokenMint, isSigner: false, isWritable: false },
-                        { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+                        { pubkey: wallet, isSigner: true, isWritable: true }, // owner (matcher)
+                        { pubkey: orderBook, isSigner: false, isWritable: true }, // order_book
+                        { pubkey: tokenMint, isSigner: false, isWritable: false }, // token_mint
+                        { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
                     ],
                     programId,
                     data: instructionData
@@ -1584,11 +1649,57 @@
                 log('[Success] Orders matched on-chain!', 'success');
                 log(`[Explorer] https://explorer.solana.com/tx/${signature}?cluster=devnet`, 'info');
 
-                // Show payment section for buyer
-                if (window.ZK2P && window.ZK2P.showPaymentSection) {
-                    const isBuyer = connectedPubkey === appConfig.buyerAddress || 
-                                    connectedPubkey !== appConfig.sellerAddress;
-                    window.ZK2P.showPaymentSection(isBuyer, Date.now());
+                // Determine buyer/seller role
+                // If connected wallet matches buyer address, they are buyer; otherwise seller
+                const isBuyer = connectedPubkey === appConfig.buyerAddress || 
+                                connectedPubkey !== appConfig.sellerAddress;
+                
+                // Generate order_id for payment tracking (use timestamp as order_id)
+                const matchedOrderId = Date.now();
+                
+                // Store matched order details globally
+                window.currentMatchedOrder = {
+                    order_id: matchedOrderId,
+                    side: isBuyer ? 'bid' : 'ask',
+                    amount: amount,
+                    price: price,
+                    counterparty: isBuyer ? appConfig.sellerAddress : appConfig.buyerAddress,
+                    tx_signature: signature
+                };
+
+                // Create matched order in OrderStore (Pending state)
+                if (appConfig.orderStoreProgramId && window.ZK2P && window.ZK2P.createMatchedOrderTransaction) {
+                    try {
+                        const orderStoreProgramId = new solanaWeb3.PublicKey(appConfig.orderStoreProgramId);
+                        const { transaction: createOrderTx, matchedOrder } = await window.ZK2P.createMatchedOrderTransaction({
+                            connection,
+                            orderStoreProgramId,
+                            wallet,
+                            orderId: matchedOrderId,
+                            bidder: isBuyer ? connectedPubkey : appConfig.buyerAddress,
+                            seller: isBuyer ? appConfig.sellerAddress : connectedPubkey,
+                            tokenMint,
+                            amount,
+                            price
+                        });
+                        
+                        const createOrderSignature = await phantomWallet.signAndSendTransaction(createOrderTx);
+                        await connection.confirmTransaction(createOrderSignature, 'confirmed');
+                        
+                        log('[OrderStore] Matched order created (Pending state)', 'success');
+                        log(`[OrderStore PDA] ${matchedOrder.toString()}`, 'info');
+                        log(`[Explorer] https://explorer.solana.com/tx/${createOrderSignature}?cluster=devnet`, 'info');
+                    } catch (orderStoreError) {
+                        log(`[OrderStore] Warning: Could not create matched order: ${orderStoreError.message}`, 'warning');
+                        console.warn('OrderStore create error:', orderStoreError);
+                    }
+                }
+
+                // If ZK Fiat Mode enabled, show payment section
+                if (window.zkFiatModeEnabled && window.ZK2P && window.ZK2P.showPaymentSection) {
+                    window.ZK2P.showPaymentSection(isBuyer, matchedOrderId);
+                } else if (!window.zkFiatModeEnabled) {
+                    log('[Match] ZK Fiat Mode disabled - Trade settled immediately', 'info');
                 }
 
                 // Refresh order book
@@ -1629,10 +1740,125 @@
 
                 log('[OrderBook] Fetched on-chain data successfully', 'success');
 
-                // Parse order book data (simplified - just update local state)
-                // In a full implementation, you'd deserialize the CritBit tree and orders here
-                // For now, we'll just trigger a re-render
-                renderOrderBook();
+                // Load IDL and deserialize using Anchor
+                try {
+                    const idlResponse = await fetch('market.json');
+                    const idl = await idlResponse.json();
+                    
+                    // Ensure Anchor is available (try multiple possible global names)
+                    const Anchor = window.anchor || window.Anchor || anchor;
+                    if (!Anchor) {
+                        throw new Error('Anchor library not loaded');
+                    }
+                    
+                    // Create Anchor program instance
+                    const program = new Anchor.Program(idl, programId, {
+                        connection: connection
+                    });
+                    
+                    // Deserialize OrderBook account (Anchor handles discriminator automatically)
+                    // Account data starts with 8-byte discriminator, which Anchor's decoder handles
+                    const orderBookAccount = program.account.orderBook.coder.accounts.decode(
+                        'OrderBook',
+                        accountInfo.data
+                    );
+                    
+                    // Log deserialized data structure
+                    console.log('[OrderBook] Deserialized account:', orderBookAccount);
+                    
+                    // Extract property names (Anchor converts snake_case to camelCase)
+                    const totalOrders = orderBookAccount.totalOrders || orderBookAccount.total_orders || 0;
+                    const bestBid = orderBookAccount.bestBid || orderBookAccount.best_bid || 0;
+                    const bestAsk = orderBookAccount.bestAsk || orderBookAccount.best_ask || 0;
+                    const orderQueues = orderBookAccount.orderQueues || orderBookAccount.order_queues || [];
+                    
+                    log(`[OrderBook] Deserialized - Total orders: ${totalOrders}`, 'info');
+                    log(`[OrderBook] Best bid: ${bestBid}, Best ask: ${bestAsk}`, 'info');
+                    log(`[OrderBook] Order queues: ${orderQueues.length}`, 'info');
+                    
+                    // Extract all orders from order_queues
+                    const allOrders = [];
+                    if (Array.isArray(orderQueues)) {
+                        for (const queue of orderQueues) {
+                            const orders = queue.orders || [];
+                            if (Array.isArray(orders)) {
+                                for (const order of orders) {
+                                    // Convert Anchor types to UI format
+                                    // Handle both camelCase and snake_case property names
+                                    const orderId = order.orderId || order.order_id;
+                                    const owner = order.owner;
+                                    const quantity = order.quantity || 0;
+                                    const price = order.price || 0;
+                                    const side = order.side;
+                                    const orderType = order.orderType || order.order_type;
+                                    const timestamp = order.timestamp || 0;
+                                    const paymentStatus = order.paymentStatus || order.payment_status;
+                                    
+                                    // Parse side enum
+                                    let sideStr = 'unknown';
+                                    if (side) {
+                                        if (side.bid !== undefined || side === 'Bid' || side === 0) {
+                                            sideStr = 'bid';
+                                        } else if (side.ask !== undefined || side === 'Ask' || side === 1) {
+                                            sideStr = 'ask';
+                                        }
+                                    }
+                                    
+                                    // Parse order type enum
+                                    let orderTypeStr = 'limit';
+                                    if (orderType) {
+                                        if (orderType.limit !== undefined || orderType === 'Limit' || orderType === 0) {
+                                            orderTypeStr = 'limit';
+                                        } else if (orderType.fillOrKill !== undefined || orderType === 'FillOrKill' || orderType === 4) {
+                                            orderTypeStr = 'fok';
+                                        }
+                                    }
+                                    
+                                    // Parse payment status
+                                    let paymentStatusStr = 'Pending';
+                                    if (paymentStatus) {
+                                        if (paymentStatus.pending !== undefined || paymentStatus === 'Pending' || paymentStatus === 0) {
+                                            paymentStatusStr = 'Pending';
+                                        } else if (paymentStatus.paymentMarked !== undefined || paymentStatus === 'PaymentMarked' || paymentStatus === 1) {
+                                            paymentStatusStr = 'PaymentMarked';
+                                        } else if (paymentStatus.verified !== undefined || paymentStatus === 'Verified' || paymentStatus === 3) {
+                                            paymentStatusStr = 'Verified';
+                                        }
+                                    }
+                                    
+                                    const uiOrder = {
+                                        order_id: orderId ? orderId.toString() : '0',
+                                        owner: owner ? owner.toString() : '',
+                                        amount: Number(quantity),
+                                        price: Number(price),
+                                        side: sideStr,
+                                        order_type: orderTypeStr,
+                                        timestamp: Number(timestamp),
+                                        payment_status: paymentStatusStr,
+                                        created_at: Number(timestamp) * 1000 || Date.now(),
+                                        trader: owner ? `${owner.toString().slice(0, 4)}...${owner.toString().slice(-4)}` : 'Unknown'
+                                    };
+                                    allOrders.push(uiOrder);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Update local order book state
+                    orderBook.orders = allOrders;
+                    log(`[OrderBook] Extracted ${allOrders.length} orders from on-chain data`, 'success');
+                    
+                    // Update UI
+                    renderOrderBook();
+                    updateStats();
+                    
+                } catch (deserializeError) {
+                    log(`[OrderBook] Deserialization error: ${deserializeError.message}`, 'error');
+                    console.error('Deserialization error:', deserializeError);
+                    console.error('Error stack:', deserializeError.stack);
+                    // Fallback: just show that we fetched the data
+                    renderOrderBook();
+                }
                 
             } catch (error) {
                 log(`[OrderBook] Error fetching: ${error.message}`, 'error');
@@ -1653,10 +1879,16 @@
     </script>
 
     <!-- Buffer Polyfill for Browser -->
+    <!-- Buffer polyfill - MUST load first -->
     <script src="https://unpkg.com/buffer@6.0.3/index.js"></script>
     <script>
-        // Make Buffer available globally
-        window.Buffer = buffer.Buffer;
+        // Make Buffer available globally IMMEDIATELY
+        if (typeof buffer !== 'undefined' && buffer.Buffer) {
+            window.Buffer = buffer.Buffer;
+            console.log('[Buffer] Polyfill loaded successfully');
+        } else {
+            console.error('[Buffer] Failed to load polyfill');
+        }
     </script>
     
     <!-- Solana Web3.js and Wallet Adapter -->
@@ -1730,14 +1962,16 @@
                     walletBtn.style.background = 'linear-gradient(135deg, #00ff88, #00aa55)';
                 }
                 
-                // Check balance
-                const balance = await connection.getBalance(new solanaWeb3.PublicKey(connectedPubkey));
-                log(`[Wallet] Balance: ${(balance / solanaWeb3.LAMPORTS_PER_SOL).toFixed(4)} SOL`, 'info');
+                // Update balances display
+                await updateBalances();
                 
                 // Identify wallet role (seller or buyer)
                 if (window.ZK2P && window.ZK2P.identifyWalletRole) {
                     await window.ZK2P.identifyWalletRole();
                 }
+                
+                // Check initialization status
+                await checkInitialization();
                 
                 // Fetch order book state after connection
                 if (window.fetchOrderBookState) {
@@ -1758,6 +1992,94 @@
                 connectedPubkey = null;
                 phantomWallet = null;
                 log('[Wallet] Disconnected', 'info');
+            }
+        }
+        
+        // Update wallet balances (SOL and token)
+        async function updateBalances() {
+            if (!connectedPubkey) return;
+            
+            try {
+                // Get SOL balance
+                const solBalance = await connection.getBalance(new solanaWeb3.PublicKey(connectedPubkey));
+                document.getElementById('solBalance').textContent = (solBalance / solanaWeb3.LAMPORTS_PER_SOL).toFixed(4);
+                log(`[Wallet] Balance: ${(solBalance / solanaWeb3.LAMPORTS_PER_SOL).toFixed(4)} SOL`, 'info');
+                
+                // Get token balance if ATA exists
+                try {
+                    const tokenMintStr = document.getElementById('tokenMint')?.value || appConfig.defaultTokenMint;
+                    if (tokenMintStr) {
+                        const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
+                        const ata = await window.ZK2P.getOrCreateTokenAccount(connection, new solanaWeb3.PublicKey(connectedPubkey), tokenMint);
+                        const tokenAccount = await connection.getTokenAccountBalance(ata);
+                        document.getElementById('tokenBalance').textContent = tokenAccount.value.uiAmount || 0;
+                        log(`[Wallet] Token balance: ${tokenAccount.value.uiAmount || 0}`, 'info');
+                    }
+                } catch (e) {
+                    document.getElementById('tokenBalance').textContent = '0';
+                    log('[Wallet] No token balance found (ATA may not exist yet)', 'warning');
+                }
+                
+                // Show balance display
+                document.getElementById('walletBalance').style.display = 'block';
+            } catch (error) {
+                log(`[Wallet] Error fetching balances: ${error.message}`, 'error');
+            }
+        }
+        
+        // Check if on-chain accounts are initialized
+        async function checkInitialization() {
+            try {
+                const tokenMintStr = document.getElementById('tokenMint')?.value || appConfig.defaultTokenMint;
+                if (!tokenMintStr) {
+                    log('[Init] No token mint specified', 'warning');
+                    return false;
+                }
+                
+                const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
+                const programId = new solanaWeb3.PublicKey(appConfig.programId);
+                
+                // Check Market
+                const [market] = await solanaWeb3.PublicKey.findProgramAddress(
+                    [Buffer.from('market'), tokenMint.toBuffer()],
+                    programId
+                );
+                const marketInfo = await connection.getAccountInfo(market);
+                if (!marketInfo) {
+                    log('[Init] Market not initialized - run: npm run p2p:init', 'error');
+                    return false;
+                }
+                log('[Init] Market account ✓', 'success');
+                
+                // Check OrderBook
+                const [orderBook] = await solanaWeb3.PublicKey.findProgramAddress(
+                    [Buffer.from('order_book'), tokenMint.toBuffer()],
+                    programId
+                );
+                const orderBookInfo = await connection.getAccountInfo(orderBook);
+                if (!orderBookInfo) {
+                    log('[Init] OrderBook not initialized - run: npm run p2p:init', 'error');
+                    return false;
+                }
+                log('[Init] OrderBook account ✓', 'success');
+                
+                // Check EscrowVault
+                const [escrowVault] = await solanaWeb3.PublicKey.findProgramAddress(
+                    [Buffer.from('escrow_vault'), tokenMint.toBuffer()],
+                    programId
+                );
+                const vaultInfo = await connection.getAccountInfo(escrowVault);
+                if (!vaultInfo) {
+                    log('[Init] Escrow vault not initialized - run: npm run p2p:init', 'error');
+                    return false;
+                }
+                log('[Init] Escrow vault ✓', 'success');
+                
+                log('[Init] All accounts initialized ✓', 'success');
+                return true;
+            } catch (error) {
+                log(`[Init] Error checking initialization: ${error.message}`, 'error');
+                return false;
             }
         }
         
@@ -1786,6 +2108,39 @@
         console.log('[2k2Peer] Phantom wallet integration ready');
         console.log('[2k2Peer] Market Program ID:', PROGRAM_IDS.market);
         console.log('[2k2Peer] P2P Payment status tracking enabled');
+    </script>
+    
+    <!-- ZK Fiat Mode Toggle Logic -->
+    <script>
+        // Initialize ZK Fiat Mode state
+        window.zkFiatModeEnabled = true;
+        
+        // Setup toggle switch functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleSwitch = document.getElementById('toggleSwitch');
+            const toggleCheckbox = document.getElementById('zkFiatModeToggle');
+            
+            // Set initial state
+            if (toggleCheckbox.checked) {
+                toggleSwitch.classList.add('active');
+            }
+            
+            // Handle toggle click
+            toggleSwitch.addEventListener('click', () => {
+                toggleCheckbox.checked = !toggleCheckbox.checked;
+                window.zkFiatModeEnabled = toggleCheckbox.checked;
+                
+                if (toggleCheckbox.checked) {
+                    toggleSwitch.classList.add('active');
+                    log('[ZK Fiat Mode] Enabled - P2P payment flow active', 'success');
+                } else {
+                    toggleSwitch.classList.remove('active');
+                    log('[ZK Fiat Mode] Disabled - Direct settlement', 'warning');
+                }
+            });
+            
+            log('[ZK Fiat Mode] Initialized - Mode: ' + (window.zkFiatModeEnabled ? 'Enabled' : 'Disabled'), 'info');
+        });
     </script>
     
     <!-- On-chain Transaction Integration -->

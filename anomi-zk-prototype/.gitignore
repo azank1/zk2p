@@ -30,6 +30,25 @@ Thumbs.db
 # Documentation artifacts
 docs/archive/
 *.draft.md
+
+# Cursor/AI artifacts
+.cursor/
+*.plan.md
+
+# Documentation directories (keep local only)
+docs/
+**/docs/
+
+# Local deployment docs (keep these local only)
+DEPLOYMENT_SUMMARY.md
+PROJECT_SUMMARY.md
+CLEANUP_COMPLETE.md
+COMMIT_READY.md
 *_STATUS.md
 *_SUMMARY.md
 *_COMPLETE.md
+*_READY.md
+BUFFER_FIX_APPLIED.md
+
+# Test/Debug artifacts
+test-deserialization.html
