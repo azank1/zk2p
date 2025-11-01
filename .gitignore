@@ -15,6 +15,16 @@ node_modules/
 *.swo
 *~
 
+# Cursor/AI artifacts
+.cursor/
+**/.cursor/
+*.plan.md
+**/*.plan.md
+
+# Documentation directories (keep local only)
+docs/
+**/docs/
+
 # OS files
 .DS_Store
 Thumbs.db
