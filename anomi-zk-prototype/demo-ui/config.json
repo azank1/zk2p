@@ -3,7 +3,7 @@
   "programId": "Bk2pKQsXXvjPChX2G8AWgwoefnwRbTSirtHGnG8yUEdB",
   "orderStoreProgramId": "DjuV2BhfeVSnamUNPQhjY1NxtCqDT8RjG8xyKJAN2spg",
   "rpcUrl": "https://api.devnet.solana.com",
-  "sellerAddress": "3zWJav4zdy86ZFkZd2iNoF93h28Q5iT2CWGmApjbh6Ue",
+  "sellerAddress": "4XxAy5sGxpBsxwKj22MVfc5MZePHkGoSBuE11Wt8hKfq",
   "buyerAddress": "BYvrTqzdLAFnyfbNQW7kR6K9vvg3e8119VwxeLDxejhf",
   "zkFiatModeDefault": true,
   "settlementDelaySeconds": 10

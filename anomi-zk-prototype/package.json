@@ -13,8 +13,11 @@
     "ui:start": "cd demo-ui && python -m http.server 8080 --bind 127.0.0.1",
     "p2p:create-token": "npx ts-node scripts/setup/create-new-token.ts",
     "p2p:setup-buyer": "npx ts-node scripts/setup/setup-buyer-wallet.ts",
+    "p2p:setup-seller": "npx ts-node scripts/setup/setup-seller-wallet.ts",
     "p2p:init-market": "npx ts-node scripts/deployment/init-devnet.ts",
     "p2p:distribute": "npx ts-node scripts/setup/create-e2e-tokens.ts",
+    "p2p:transfer-to-seller": "npx ts-node scripts/setup/transfer-tokens-to-seller.ts",
+    "p2p:balance-tokens": "npx ts-node scripts/setup/balance-tokens.ts",
     "p2p:test": "npx ts-node scripts/tests/test-p2p-flow.ts",
     "p2p:fetch": "npx ts-node scripts/tests/fetch-orderbook.ts",
     "p2p:place-order": "npx ts-node scripts/tests/place-order-cli.ts",
@@ -23,7 +26,8 @@
     "test:verify-setup": "npx ts-node scripts/tests/verify-devnet-setup.ts",
     "test:single-wallet": "npx ts-node scripts/tests/test-single-wallet.ts",
     "test:matching": "npx ts-node scripts/tests/test-matching.ts",
-    "test:payment-flow": "npx ts-node scripts/tests/test-payment-flow.ts"
+    "test:payment-flow": "npx ts-node scripts/tests/test-payment-flow.ts",
+    "test:e2e": "npx ts-node scripts/tests/test-e2e-orchestrated.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",

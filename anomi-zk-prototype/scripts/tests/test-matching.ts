@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { PublicKey, Keypair, Connection } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import fs from "fs";
 import type { Market } from '../../target/types/market';
 import marketIdl from '../../target/idl/market.json';
@@ -110,23 +110,39 @@ async function main() {
   // Test 2: Match orders
   console.log("\n2. Matching orders...");
   try {
-    const sellerAta = await getAssociatedTokenAddress(tokenMint, seller!);
-    const buyerAta = await getAssociatedTokenAddress(tokenMint, buyer!);
+    // Get or create token accounts (ensures they exist before matching)
+    // Note: In a real scenario, these should already exist from order placement,
+    // but we create them here for robustness and consistency
+    const sellerAtaAccount = await getOrCreateAssociatedTokenAccount(
+      connection,
+      buyerKeypair, // payer for account creation if needed
+      tokenMint,
+      seller!
+    );
+    const sellerAta = sellerAtaAccount.address;
+    
+    const buyerAtaAccount = await getOrCreateAssociatedTokenAccount(
+      connection,
+      buyerKeypair,
+      tokenMint,
+      buyer!
+    );
+    const buyerAta = buyerAtaAccount.address;
 
+    // Note: match_order expects (side, quantity, limit_price, order_type)
+    // We'll match a BID order against existing ASK orders
     const matchTx = await program.methods
-      .matchOrder(askOrderId!, bidOrderId!)
+      .matchOrder(
+        { bid: {} }, // Side::Bid (buyer wants to buy)
+        new anchor.BN(100), // quantity: 100 tokens
+        new anchor.BN(50),  // limit_price: 50 (willing to pay up to 50)
+        { limit: {} } // OrderType::Limit
+      )
       .accounts({
-        market: marketPda,
+        owner: buyerKeypair.publicKey, // taker (buyer)
         orderBook: orderBookPda,
-        escrowVault: escrowVaultPda,
-        escrowAuthority: escrowAuthorityPda,
-        seller: seller!,
-        buyer: buyer!,
-        sellerTokenAccount: sellerAta,
-        buyerTokenAccount: buyerAta,
         tokenMint: tokenMint,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        matcher: buyerKeypair.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
 
@@ -146,8 +162,13 @@ async function main() {
   console.log("\n3. Checking OrderStore integration...");
   try {
     // Derive MatchedOrder PDA
-    const orderIdBytes = Buffer.alloc(8);
-    orderIdBytes.writeBigUInt64LE(BigInt(askOrderId!.toString()), 0);
+    // u128 is 16 bytes - write as two 64-bit values (little-endian)
+    const orderIdBytes = Buffer.alloc(16);
+    const orderIdBigInt = BigInt(askOrderId!.toString());
+    // Write low 64 bits at offset 0
+    orderIdBytes.writeBigUInt64LE(orderIdBigInt & BigInt(0xFFFFFFFFFFFFFFFF), 0);
+    // Write high 64 bits at offset 8
+    orderIdBytes.writeBigUInt64LE(orderIdBigInt >> BigInt(64), 8);
     
     const [matchedOrderPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("matched_order"), orderIdBytes],

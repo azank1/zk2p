@@ -134,8 +134,13 @@ async function main() {
   // Step 3: Check OrderStore status (should be Confirmed)
   console.log("\n3. Checking OrderStore status...");
   try {
-    const orderIdBytes = Buffer.alloc(8);
-    orderIdBytes.writeBigUInt64LE(BigInt(orderId!.toString()), 0);
+    // u128 is 16 bytes - write as two 64-bit values (little-endian)
+    const orderIdBytes = Buffer.alloc(16);
+    const orderIdBigInt = BigInt(orderId!.toString());
+    // Write low 64 bits at offset 0
+    orderIdBytes.writeBigUInt64LE(orderIdBigInt & BigInt(0xFFFFFFFFFFFFFFFF), 0);
+    // Write high 64 bits at offset 8
+    orderIdBytes.writeBigUInt64LE(orderIdBigInt >> BigInt(64), 8);
     
     const [matchedOrderPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("matched_order"), orderIdBytes],
@@ -219,8 +224,13 @@ async function main() {
   // Step 6: Check final OrderStore status (should be Settled)
   console.log("\n6. Checking final OrderStore status...");
   try {
-    const orderIdBytes = Buffer.alloc(8);
-    orderIdBytes.writeBigUInt64LE(BigInt(orderId!.toString()), 0);
+    // u128 is 16 bytes - write as two 64-bit values (little-endian)
+    const orderIdBytes = Buffer.alloc(16);
+    const orderIdBigInt = BigInt(orderId!.toString());
+    // Write low 64 bits at offset 0
+    orderIdBytes.writeBigUInt64LE(orderIdBigInt & BigInt(0xFFFFFFFFFFFFFFFF), 0);
+    // Write high 64 bits at offset 8
+    orderIdBytes.writeBigUInt64LE(orderIdBigInt >> BigInt(64), 8);
     
     const [matchedOrderPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("matched_order"), orderIdBytes],
