@@ -1303,6 +1303,12 @@
                 return;
             }
 
+            // Check if ZK2P is available
+            if (!window.ZK2P || !window.ZK2P.getOrCreateTokenAccount) {
+                log('[Error] ZK2P module not loaded. Please refresh the page.', 'error');
+                return;
+            }
+
             const trader = document.getElementById('trader').value.trim();
             const amount = parseInt(document.getElementById('amount').value);
             const price = parseInt(document.getElementById('price').value);
@@ -1373,6 +1379,12 @@
         async function placeBidOrder() {
             if (!phantomWallet || !connectedPubkey) {
                 log('[Error] Please connect Phantom wallet first', 'error');
+                return;
+            }
+
+            // Check if ZK2P is available
+            if (!window.ZK2P || !window.ZK2P.getOrCreateTokenAccount) {
+                log('[Error] ZK2P module not loaded. Please refresh the page.', 'error');
                 return;
             }
 
@@ -1718,6 +1730,16 @@
                 return;
             }
 
+            // Ensure Buffer is available
+            if (typeof Buffer === 'undefined' || typeof Buffer.from !== 'function') {
+                log('[OrderBook] Buffer not available - waiting...', 'warning');
+                await new Promise(resolve => setTimeout(resolve, 500));
+                if (typeof Buffer === 'undefined' || typeof Buffer.from !== 'function') {
+                    log('[OrderBook] Buffer still not available - please refresh page', 'error');
+                    return;
+                }
+            }
+
             try {
                 const tokenMintStr = document.getElementById('tokenMint')?.value || appConfig.defaultTokenMint;
                 const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
@@ -1879,19 +1901,163 @@
     </script>
 
     <!-- Buffer Polyfill for Browser -->
-    <!-- Buffer polyfill - MUST load first -->
-    <script src="https://unpkg.com/buffer@6.0.3/index.js"></script>
+    <!-- Inline Buffer implementation that works immediately -->
     <script>
-        // Make Buffer available globally IMMEDIATELY
-        if (typeof buffer !== 'undefined' && buffer.Buffer) {
-            window.Buffer = buffer.Buffer;
-            console.log('[Buffer] Polyfill loaded successfully');
-        } else {
-            console.error('[Buffer] Failed to load polyfill');
-        }
+        (function() {
+            'use strict';
+            // Create a complete Buffer polyfill inline
+            function createBufferPolyfill() {
+                function BufferImpl(arg, encoding) {
+                    if (!(this instanceof BufferImpl)) {
+                        return new BufferImpl(arg, encoding);
+                    }
+                    
+                    if (typeof arg === 'number') {
+                        this.data = new Uint8Array(arg);
+                    } else if (typeof arg === 'string') {
+                        const encoder = new TextEncoder();
+                        this.data = encoder.encode(arg);
+                    } else if (Array.isArray(arg)) {
+                        this.data = new Uint8Array(arg);
+                    } else if (arg instanceof Uint8Array) {
+                        this.data = new Uint8Array(arg);
+                    } else {
+                        this.data = new Uint8Array(0);
+                    }
+                    
+                    this.length = this.data.length;
+                    this.buffer = this.data.buffer;
+                    return this;
+                }
+                
+                // Static methods
+                BufferImpl.from = function(data, encoding) {
+                    if (Array.isArray(data)) {
+                        return new BufferImpl(new Uint8Array(data));
+                    } else if (typeof data === 'string') {
+                        if (encoding === 'hex') {
+                            const bytes = [];
+                            for (let i = 0; i < data.length; i += 2) {
+                                bytes.push(parseInt(data.substr(i, 2), 16));
+                            }
+                            return new BufferImpl(new Uint8Array(bytes));
+                        }
+                        const encoder = new TextEncoder();
+                        return new BufferImpl(encoder.encode(data));
+                    } else if (data instanceof Uint8Array || (data && data.buffer instanceof ArrayBuffer)) {
+                        // Handle Uint8Array (including from PublicKey.toBuffer())
+                        return new BufferImpl(data);
+                    } else if (data && typeof data.length === 'number') {
+                        // Handle array-like objects
+                        return new BufferImpl(new Uint8Array(data));
+                    }
+                    // Fallback: try to convert
+                    try {
+                        return new BufferImpl(new Uint8Array(data));
+                    } catch (e) {
+                        console.error('[Buffer] Failed to convert data:', data, e);
+                        return new BufferImpl(new Uint8Array(0));
+                    }
+                };
+                
+                BufferImpl.alloc = function(size, fill) {
+                    const buf = new BufferImpl(new Uint8Array(size));
+                    if (fill !== undefined) {
+                        buf.data.fill(fill);
+                    }
+                    return buf;
+                };
+                
+                BufferImpl.concat = function(arrays) {
+                    const totalLength = arrays.reduce((sum, arr) => {
+                        const len = arr instanceof BufferImpl ? arr.length : arr.length;
+                        return sum + len;
+                    }, 0);
+                    const result = new Uint8Array(totalLength);
+                    let offset = 0;
+                    for (const arr of arrays) {
+                        const data = arr instanceof BufferImpl ? arr.data : arr;
+                        result.set(data, offset);
+                        offset += data.length;
+                    }
+                    return new BufferImpl(result);
+                };
+                
+                // Instance methods
+                BufferImpl.prototype.writeBigUInt64LE = function(value, offset) {
+                    offset = offset || 0;
+                    const view = new DataView(this.buffer, offset);
+                    view.setBigUint64(0, BigInt(value), true); // little-endian
+                };
+                
+                BufferImpl.prototype.writeUInt8 = function(value, offset) {
+                    this.data[offset || 0] = value;
+                };
+                
+                BufferImpl.prototype.writeUInt32LE = function(value, offset) {
+                    offset = offset || 0;
+                    const view = new DataView(this.buffer, offset);
+                    view.setUint32(0, value, true); // little-endian
+                };
+                
+                BufferImpl.prototype.copy = function(target, targetStart, sourceStart, sourceEnd) {
+                    targetStart = targetStart || 0;
+                    sourceStart = sourceStart || 0;
+                    sourceEnd = sourceEnd || this.length;
+                    const sourceData = this.data.subarray(sourceStart, sourceEnd);
+                    if (target instanceof BufferImpl) {
+                        target.data.set(sourceData, targetStart);
+                    } else if (target instanceof Uint8Array) {
+                        target.set(sourceData, targetStart);
+                    }
+                };
+                
+                // Make it work with PublicKey.toBuffer()
+                BufferImpl.prototype.slice = function(start, end) {
+                    return new BufferImpl(this.data.slice(start, end));
+                };
+                
+                return BufferImpl;
+            }
+            
+            // Install immediately
+            const BufferPolyfill = createBufferPolyfill();
+            window.Buffer = BufferPolyfill;
+            if (typeof global === 'undefined') {
+                window.global = window;
+            }
+            global.Buffer = BufferPolyfill;
+            
+            console.log('[Buffer] Inline polyfill loaded');
+            console.log('[Buffer] Buffer.from available:', typeof Buffer.from === 'function');
+            console.log('[Buffer] Buffer.alloc available:', typeof Buffer.alloc === 'function');
+            
+            // Try to load full buffer polyfill in background for better compatibility
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js';
+            script.async = true;
+            script.onload = function() {
+                if (typeof buffer !== 'undefined' && buffer.Buffer) {
+                    window.Buffer = buffer.Buffer;
+                    global.Buffer = buffer.Buffer;
+                    console.log('[Buffer] Full polyfill loaded, replacing inline version');
+                    window.dispatchEvent(new Event('bufferReady'));
+                }
+            };
+            document.head.appendChild(script);
+        })();
     </script>
     
     <!-- Solana Web3.js and Wallet Adapter -->
+    <!-- Load after Buffer is ready -->
+    <script>
+        // Ensure Buffer is available before loading Solana libraries
+        if (typeof Buffer === 'undefined' || typeof Buffer.from !== 'function') {
+            console.error('[Init] Buffer not available before loading Solana libraries!');
+        } else {
+            console.log('[Init] Buffer ready, loading Solana libraries...');
+        }
+    </script>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
     <script src="https://unpkg.com/@coral-xyz/anchor@0.29.0/dist/browser/index.js"></script>
     
@@ -2007,13 +2173,17 @@
                 
                 // Get token balance if ATA exists
                 try {
-                    const tokenMintStr = document.getElementById('tokenMint')?.value || appConfig.defaultTokenMint;
-                    if (tokenMintStr) {
-                        const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
-                        const ata = await window.ZK2P.getOrCreateTokenAccount(connection, new solanaWeb3.PublicKey(connectedPubkey), tokenMint);
-                        const tokenAccount = await connection.getTokenAccountBalance(ata);
-                        document.getElementById('tokenBalance').textContent = tokenAccount.value.uiAmount || 0;
-                        log(`[Wallet] Token balance: ${tokenAccount.value.uiAmount || 0}`, 'info');
+                    if (window.ZK2P && window.ZK2P.getOrCreateTokenAccount) {
+                        const tokenMintStr = document.getElementById('tokenMint')?.value || appConfig.defaultTokenMint;
+                        if (tokenMintStr) {
+                            const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
+                            const ata = await window.ZK2P.getOrCreateTokenAccount(connection, new solanaWeb3.PublicKey(connectedPubkey), tokenMint);
+                            const tokenAccount = await connection.getTokenAccountBalance(ata);
+                            document.getElementById('tokenBalance').textContent = tokenAccount.value.uiAmount || 0;
+                            log(`[Wallet] Token balance: ${tokenAccount.value.uiAmount || 0}`, 'info');
+                        }
+                    } else {
+                        log('[Wallet] ZK2P module not loaded yet', 'warning');
                     }
                 } catch (e) {
                     document.getElementById('tokenBalance').textContent = '0';
@@ -2030,6 +2200,16 @@
         // Check if on-chain accounts are initialized
         async function checkInitialization() {
             try {
+                // Ensure Buffer is available
+                if (typeof Buffer === 'undefined' || typeof Buffer.from !== 'function') {
+                    log('[Init] Buffer not available - waiting...', 'warning');
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    if (typeof Buffer === 'undefined' || typeof Buffer.from !== 'function') {
+                        log('[Init] Buffer still not available - please refresh page', 'error');
+                        return false;
+                    }
+                }
+                
                 const tokenMintStr = document.getElementById('tokenMint')?.value || appConfig.defaultTokenMint;
                 if (!tokenMintStr) {
                     log('[Init] No token mint specified', 'warning');
@@ -2144,6 +2324,28 @@
     </script>
     
     <!-- On-chain Transaction Integration -->
-    <script src="onchain-transactions.js"></script>
+    <!-- Load after Buffer is ready -->
+    <script>
+        // Wait for Buffer before loading onchain-transactions.js
+        function loadOnchainTransactions() {
+            if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
+                const script = document.createElement('script');
+                script.src = 'onchain-transactions.js';
+                script.onload = function() {
+                    console.log('[Init] Onchain transactions module loaded');
+                };
+                script.onerror = function() {
+                    console.error('[Init] Failed to load onchain-transactions.js');
+                };
+                document.head.appendChild(script);
+            } else {
+                // Wait for bufferReady event
+                window.addEventListener('bufferReady', loadOnchainTransactions, { once: true });
+                // Also try after a delay
+                setTimeout(loadOnchainTransactions, 1000);
+            }
+        }
+        loadOnchainTransactions();
+    </script>
 </body>
 </html>

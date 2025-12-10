@@ -5,13 +5,37 @@
 (function() {
     'use strict';
     
-// Check if Buffer is available
-if (typeof Buffer === 'undefined') {
-    console.error('[ZK2P] Buffer not available! Cannot initialize transaction module.');
-    return;
+// Wait for Buffer to be available (polyfill loads asynchronously)
+function waitForBuffer(callback, maxAttempts = 100) {
+    if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function' && typeof Buffer.alloc === 'function') {
+        console.log('[ZK2P] Buffer is available, initializing...');
+        callback();
+    } else if (maxAttempts > 0) {
+        // Listen for bufferReady event
+        if (typeof window !== 'undefined' && window.addEventListener) {
+            const handler = function() {
+                window.removeEventListener('bufferReady', handler);
+                if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
+                    callback();
+                } else {
+                    waitForBuffer(callback, maxAttempts - 1);
+                }
+            };
+            window.addEventListener('bufferReady', handler, { once: true });
+        }
+        setTimeout(() => waitForBuffer(callback, maxAttempts - 1), 100);
+    } else {
+        console.error('[ZK2P] Buffer not available after waiting! Cannot initialize transaction module.');
+        console.error('[ZK2P] Make sure buffer polyfill is loaded before this script.');
+        console.error('[ZK2P] Buffer type:', typeof Buffer);
+        console.error('[ZK2P] window.Buffer type:', typeof window.Buffer);
+    }
 }
 
-console.log('[ZK2P] Initializing transaction module with Buffer support...');
+waitForBuffer(function() {
+    console.log('[ZK2P] Initializing transaction module with Buffer support...');
+    console.log('[ZK2P] Buffer.from available:', typeof Buffer.from === 'function');
+    console.log('[ZK2P] Buffer.alloc available:', typeof Buffer.alloc === 'function');
     
 // Program instruction discriminators (first 8 bytes of instruction data)
 // These are derived from the Anchor instruction name hash: sha256("global:{instruction_name}").slice(0, 8)
@@ -794,6 +818,9 @@ if (typeof window !== 'undefined') {
     console.log('[ZK2P] Transaction module loaded successfully');
     console.log('[ZK2P] Instruction discriminators:', Object.keys(INSTRUCTIONS));
     console.log('[ZK2P] OrderStore integration ready');
+    console.log('[ZK2P] Buffer available:', typeof Buffer !== 'undefined');
 }
+
+}); // End of waitForBuffer callback
 
 })(); // End of IIFE

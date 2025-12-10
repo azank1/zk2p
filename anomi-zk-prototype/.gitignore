@@ -8,6 +8,8 @@ test-ledger
 # Node
 node_modules
 .yarn
+package-lock.json
+yarn.lock
 
 # Test reports (generated)
 test-reports/
@@ -27,19 +29,13 @@ Thumbs.db
 *.tmp
 .temp/
 
-# Documentation artifacts
-docs/archive/
-*.draft.md
-
-# Cursor/AI artifacts
-.cursor/
-*.plan.md
-
-# Documentation directories (keep local only)
+# Documentation (exclude all docs except README)
 docs/
 **/docs/
+*.md
+!README.md
 
-# Local deployment docs (keep these local only)
+# Local deployment/docs files
 DEPLOYMENT_SUMMARY.md
 PROJECT_SUMMARY.md
 CLEANUP_COMPLETE.md
@@ -49,6 +45,23 @@ COMMIT_READY.md
 *_COMPLETE.md
 *_READY.md
 BUFFER_FIX_APPLIED.md
+WSL_COMMANDS.txt
+workflow_ANOMI.md
+
+# Cursor/AI artifacts
+.cursor/
+*.plan.md
 
 # Test/Debug artifacts
 test-deserialization.html
+
+# Script artifacts
+scripts/README.md
+scripts/*.ps1
+scripts/*.sh
+rebuild-deploy.sh
+
+# Demo UI artifacts
+demo-ui/start-server.bat
+demo-ui/start-server.ps1
+demo-ui/favicon.ico
