@@ -10,7 +10,7 @@
     "test:production": "anchor test tests/production-readiness.ts",
     "deploy:devnet": "powershell -File scripts/deployment/deploy-devnet.ps1",
     "create-token": "powershell -File scripts/setup/create-test-token.ps1",
-    "ui:start": "cd demo-ui && python -m http.server 8080 --bind 127.0.0.1",
+    "ui:start": "cd demo-ui && python server.py",
     "p2p:create-token": "npx ts-node scripts/setup/create-new-token.ts",
     "p2p:setup-buyer": "npx ts-node scripts/setup/setup-buyer-wallet.ts",
     "p2p:setup-seller": "npx ts-node scripts/setup/setup-seller-wallet.ts",
@@ -27,7 +27,8 @@
     "test:single-wallet": "npx ts-node scripts/tests/test-single-wallet.ts",
     "test:matching": "npx ts-node scripts/tests/test-matching.ts",
     "test:payment-flow": "npx ts-node scripts/tests/test-payment-flow.ts",
-    "test:e2e": "npx ts-node scripts/tests/test-e2e-orchestrated.ts"
+    "test:e2e": "npx ts-node scripts/tests/test-e2e-orchestrated.ts",
+    "test:two-user-demo": "npx ts-node scripts/tests/test-two-user-demo.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",

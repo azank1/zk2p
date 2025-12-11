@@ -11,8 +11,8 @@ const EmailParser = require("./email-parser");
 
 class AnomiProofGenerator {
     constructor(wasmPath, zkeyPath) {
-        this.wasmPath = wasmPath || "./circuit_js/circuit.wasm";
-        this.zkeyPath = zkeyPath || "./circuit_final.zkey";
+        this.wasmPath = wasmPath || path.join(__dirname, "..", "circuit_js", "circuit.wasm");
+        this.zkeyPath = zkeyPath || path.join(__dirname, "..", "circuit_final.zkey");
     }
 
     /**
@@ -138,6 +138,16 @@ class AnomiProofGenerator {
      * @param {string|number} orderId - Order ID to include in proof
      * @returns {Object} Generated proof and public signals
      */
+    /**
+     * Generate a ZK proof for email verification
+     * @param {string} emlPath - Path to .eml file
+     * @param {string|number} orderId - Order ID to include in proof
+     * @returns {Object} Proof and public signals
+     * 
+     * NOTE: Currently uses dkim.bodyHash as signature hash (prototype limitation).
+     * Full RSA-2048 signature verification (decrypting signature^e mod n) is not implemented
+     * due to computational complexity in ZK circuits. This is documented in the code.
+     */
     async generateEmailProof(emlPath, orderId) {
         try {
             console.log("Generating ZK proof for email verification...");
@@ -155,6 +165,7 @@ class AnomiProofGenerator {
             console.log("From Header:", fromHeader);
             
             // Convert email hash to array of 8 32-bit words
+            // This is the computed body hash from canonicalized email
             const emailHashBytes = Buffer.from(emailHashData.bodyHash, 'hex');
             const emailHash = [];
             for (let i = 0; i < 8; i++) {
@@ -170,9 +181,13 @@ class AnomiProofGenerator {
                 fromHeaderHash.push(word.toString());
             }
             
-            // For signature hash, we use the body hash from DKIM (bh field)
-            // In full RSA verification, this would be extracted from signature^e mod n
-            const signatureHashBytes = Buffer.from(dkim.bodyHash, 'base64');
+            // Verify DKIM signature and extract hash from RSA signature
+            // This should decrypt signature^e mod n to get the signed hash
+            // Currently verifies body hash matches; full RSA verification requires DNS lookup
+            const dkimVerification = await EmailParser.verifyDKIMSignatureAndExtractHash(dkim, email, emailHashData);
+            
+            // Use the extracted hash from RSA signature (or body hash if RSA verification not fully implemented)
+            const signatureHashBytes = dkimVerification.extractedHash;
             const signatureHash = [];
             for (let i = 0; i < 8; i++) {
                 const word = signatureHashBytes.readUInt32BE(i * 4);

@@ -2,10 +2,10 @@
   "name": "zk-stuff",
   "version": "1.0.0",
   "description": "ZK Email Verification Circuit for ZK2P DEX Settlement Layer",
-  "main": "proof-generator.js",
+  "main": "src/proof-generator.js",
   "scripts": {
-    "test": "node test-email-verification.js",
-    "compile": "powershell -ExecutionPolicy Bypass -File compile_circuit.ps1"
+    "test": "node tests/test-email-verification.js",
+    "compile": "powershell -ExecutionPolicy Bypass -File scripts/compile_circuit.ps1"
   },
   "keywords": ["zk", "zero-knowledge", "circom", "email-verification", "dkim"],
   "author": "",

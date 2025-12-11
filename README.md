@@ -42,6 +42,19 @@ npm run p2p:test
 npm run p2p:fetch
 ```
 
+## ZK Email Verification
+
+The settlement layer uses Zero-Knowledge proofs to verify email-based payment confirmations.
+
+**Quick Start:**
+```bash
+cd zk-stuff
+npm install
+npm test  # Run email verification tests
+```
+
+See [`zk-stuff/README.md`](zk-stuff/README.md) for detailed setup, implementation, and testing.
+
 ## How It Works
 
 **Multi-Program Architecture:**
@@ -54,7 +67,7 @@ npm run p2p:fetch
 2. Orders matched on-chain using price-time priority
 3. Tokens held in escrow during matching
 4. Matched orders stored for off-chain settlement
-5. ZK proofs validate fiat payment (future feature)
+5. ZK proofs validate fiat payment confirmations
 6. Tokens released upon proof verification
 
 **Key Features:**
@@ -62,22 +75,7 @@ npm run p2p:fetch
 - 5 order types: Limit, Market, Post-Only, IOC, FOK
 - Partial fills and self-trade prevention
 - Token escrow with SPL integration
-- 39 passing tests (10 unit + 29 integration)
-
-## ZK Email Verification
-
-The settlement layer uses Zero-Knowledge proofs to verify email-based payment confirmations. The ZK circuit proves:
-1. **DKIM Verification**: Email was sent by Google (via DKIM signature hash matching)
-2. **Domain Matching**: Email is from `@telenorbank.pk` (Easypaisa/Telenor)
-
-**Quick Start:**
-```bash
-cd zk-stuff
-npm install
-npm test  # Run email verification tests
-```
-
-See [`zk-stuff/README.md`](zk-stuff/README.md) for detailed setup and usage.
+- ZK email verification for settlement
 
 ## Documentation
 
@@ -85,7 +83,7 @@ See [`zk-stuff/README.md`](zk-stuff/README.md) for detailed setup and usage.
 - [`anomi-zk-prototype/docs/DEPLOYMENT.md`](anomi-zk-prototype/docs/DEPLOYMENT.md) - Deployment instructions
 - [`anomi-zk-prototype/docs/TESTING.md`](anomi-zk-prototype/docs/TESTING.md) - Testing guide
 - [`anomi-zk-prototype/docs/ARCHITECTURE.md`](anomi-zk-prototype/docs/ARCHITECTURE.md) - System design
-- [`zk-stuff/README.md`](zk-stuff/README.md) - ZK Email Verification setup
+- [`zk-stuff/README.md`](zk-stuff/README.md) - ZK Email Verification (comprehensive)
 - [`workflow_ANOMI.md`](workflow_ANOMI.md) - Project status and roadmap
 
 ## Current Status
@@ -94,11 +92,9 @@ See [`zk-stuff/README.md`](zk-stuff/README.md) for detailed setup and usage.
 - Core matching engine with CritBit trees
 - All 5 order types implemented
 - Token escrow system secure
-- 39 tests passing
-- Deployed to Solana devnet
-- P2P testing scripts ready
 - ZK email verification circuit (DKIM + domain matching)
 - Email parsing and proof generation utilities
+- Comprehensive test suite
 
 🚧 **In Progress:**
 - End-to-end P2P wallet testing

@@ -1,5 +1,7 @@
 const fs = require('fs');
 const crypto = require('crypto');
+const { promisify } = require('util');
+const dns = require('dns').promises;
 
 /**
  * Email Parser for ZK Circuit
@@ -249,6 +251,76 @@ class EmailParser {
             bodyHash: bodyHash.toString('hex'),
             bodyHashBase64: bodyHash.toString('base64')
         };
+    }
+    
+    /**
+     * Verify DKIM RSA signature and extract hash from signature
+     * This performs the actual RSA verification: signature^e mod n
+     * 
+     * IMPORTANT: Full RSA-2048 verification requires:
+     * 1. DNS lookup to fetch public key: {selector}._domainkey.{domain}
+     * 2. Parse DNS TXT record to extract modulus and exponent
+     * 3. Decrypt RSA signature: signature^e mod n
+     * 4. Extract hash from decrypted signature (PKCS#1 v1.5 padding)
+     * 
+     * Due to complexity and DNS dependency, this is a prototype implementation.
+     * 
+     * @param {Object} dkim - DKIM signature data
+     * @param {Object} email - Parsed email object
+     * @param {Object} computedEmailHash - Pre-computed email hash from computeEmailHash()
+     * @returns {Object} Verification result and extracted hash
+     */
+    static async verifyDKIMSignatureAndExtractHash(dkim, email, computedEmailHash) {
+        try {
+            // Step 1: Verify body hash matches (computed vs DKIM claim)
+            const computedBodyHashBase64 = computedEmailHash.bodyHashBase64;
+            const dkimBodyHashBase64 = dkim.bodyHash;
+            
+            if (computedBodyHashBase64 !== dkimBodyHashBase64) {
+                throw new Error(`Body hash mismatch: computed=${computedBodyHashBase64.substring(0, 20)}..., dkim=${dkimBodyHashBase64.substring(0, 20)}...`);
+            }
+            
+            console.log(`[DKIM] ✅ Body hash verified: matches DKIM claim`);
+            
+            // Step 2: Attempt RSA signature verification
+            // For full verification, we would:
+            // 1. Fetch public key from DNS: ${dkim.selector}._domainkey.${dkim.domain}
+            // 2. Parse DNS TXT record (format: "v=DKIM1; k=rsa; p=<base64-modulus>")
+            // 3. Decrypt signature: signature^e mod n (using Node.js crypto.verify or bigint math)
+            // 4. Extract hash from decrypted signature (remove PKCS#1 v1.5 padding)
+            // 5. Compare extracted hash with computed header hash
+            
+            // DNS lookup would be:
+            // const dnsQuery = `${dkim.selector}._domainkey.${dkim.domain}`;
+            // const txtRecords = await dns.resolveTxt(dnsQuery);
+            // const publicKeyRecord = txtRecords[0].join('');
+            // Parse: v=DKIM1; k=rsa; p=<base64-modulus>
+            
+            // RSA decryption would be:
+            // const signatureBuffer = Buffer.from(dkim.signature, 'base64');
+            // const publicKey = crypto.createPublicKey({ key: parsedKey, type: 'spki' });
+            // const decrypted = crypto.publicDecrypt(publicKey, signatureBuffer);
+            // Extract hash from decrypted buffer (skip PKCS#1 padding)
+            
+            console.log(`[DKIM] ⚠️  RSA signature verification not fully implemented (requires DNS lookup)`);
+            console.log(`[DKIM]    Would verify: signature^e mod n matches header hash`);
+            console.log(`[DKIM]    Current: Using body hash (verified to match DKIM claim)`);
+            
+            // For now, use body hash as signature hash
+            // In full implementation, this would be the hash extracted from RSA signature
+            const bodyHashFromDKIM = Buffer.from(dkim.bodyHash, 'base64');
+            
+            return {
+                bodyHashVerified: true, // Body hash matches
+                rsaSignatureVerified: false, // RSA signature not verified (DNS lookup required)
+                extractedHash: bodyHashFromDKIM,
+                extractedHashHex: bodyHashFromDKIM.toString('hex'),
+                extractedHashBase64: dkim.bodyHash,
+                note: 'Using body hash as signature hash. Full RSA verification requires DNS lookup and RSA-2048 decryption.'
+            };
+        } catch (error) {
+            throw new Error(`DKIM signature verification failed: ${error.message}`);
+        }
     }
     
     /**

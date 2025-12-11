@@ -2,15 +2,19 @@
 
 # Compile Circuit and Generate Keys
 # Bash version for Linux/Mac
+# Run from zk-stuff/scripts/ directory
 
 echo "========================================"
 echo "ZK Circuit Compilation Script"
 echo "========================================"
 echo ""
 
+# Change to parent directory for compilation
+cd ..
+
 # Step 1: Compile circuit
 echo "Step 1: Compiling circuit..."
-circom2 circuit.circom --r1cs --wasm -l node_modules
+circom2 src/circuit.circom --r1cs --wasm -l node_modules
 if [ $? -ne 0 ]; then
     echo "Error: Circuit compilation failed"
     exit 1
@@ -55,6 +59,9 @@ echo ""
 # Step 4: Export verification key
 echo "Step 3: Exporting verification key..."
 snarkjs zkey export verificationkey circuit_final.zkey verification_key.json
+
+# Return to scripts directory
+cd scripts
 if [ $? -ne 0 ]; then
     echo "Error: Failed to export verification key"
     exit 1
@@ -67,11 +74,11 @@ echo "✅ ZK Setup Complete!"
 echo "========================================"
 echo ""
 echo "Generated files:"
-echo "  - circuit.r1cs"
-echo "  - circuit_js/circuit.wasm"
-echo "  - circuit_final.zkey"
-echo "  - verification_key.json"
+echo "  - circuit.r1cs (root)"
+echo "  - circuit_js/circuit.wasm (root)"
+echo "  - circuit_final.zkey (root)"
+echo "  - verification_key.json (root)"
 echo ""
 echo "Next: Test proof generation"
-echo "  node test-email-verification.js"
+echo "  npm test"
 echo ""

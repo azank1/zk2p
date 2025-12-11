@@ -62,9 +62,18 @@ test-ledger/
 # Local documentation (not for GitHub)
 DEPLOYMENT_SUMMARY.md
 
+# ZK circuit generated files
+zk-stuff/circuit.r1cs
+zk-stuff/circuit_js/
+zk-stuff/circuit_final.zkey
+zk-stuff/verification_key.json
+zk-stuff/*.ptau
+zk-stuff/pot*.ptau
+
 # Keep essential files:
 # - Source code (programs/, tests/, scripts/)
 # - Configuration (Anchor.toml, Cargo.toml, package.json)
 # - Documentation (README.md, workflow_ANOMI.md, docs/)
 # - Demo UI (demo-ui/)
 # - Tests (all .ts test files)
+# - ZK source files (zk-stuff/src/, zk-stuff/scripts/, zk-stuff/tests/)

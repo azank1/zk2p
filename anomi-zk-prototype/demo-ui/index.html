@@ -4,6 +4,241 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2k2Peer - DEX Interface</title>
+    
+    <!-- Buffer Polyfill - MUST load first before any Solana libraries -->
+    <script>
+        // Create a complete Buffer polyfill inline
+        // NOT wrapped in IIFE to ensure global access
+        (function() {
+            'use strict';
+            function createBufferPolyfill() {
+                function BufferImpl(arg, encoding) {
+                    if (!(this instanceof BufferImpl)) {
+                        return new BufferImpl(arg, encoding);
+                    }
+                    
+                    if (typeof arg === 'number') {
+                        this.data = new Uint8Array(arg);
+                    } else if (typeof arg === 'string') {
+                        const encoder = new TextEncoder();
+                        this.data = encoder.encode(arg);
+                    } else if (Array.isArray(arg)) {
+                        this.data = new Uint8Array(arg);
+                    } else if (arg instanceof Uint8Array) {
+                        this.data = new Uint8Array(arg);
+                    } else {
+                        this.data = new Uint8Array(0);
+                    }
+                    
+                    this.length = this.data.length;
+                    this.buffer = this.data.buffer;
+                    return this;
+                }
+                
+                // Static methods
+                BufferImpl.from = function(data, encoding) {
+                    if (Array.isArray(data)) {
+                        return new BufferImpl(new Uint8Array(data));
+                    } else if (typeof data === 'string') {
+                        if (encoding === 'hex') {
+                            const bytes = [];
+                            for (let i = 0; i < data.length; i += 2) {
+                                bytes.push(parseInt(data.substr(i, 2), 16));
+                            }
+                            return new BufferImpl(new Uint8Array(bytes));
+                        }
+                        const encoder = new TextEncoder();
+                        return new BufferImpl(encoder.encode(data));
+                    } else if (data instanceof Uint8Array || (data && data.buffer instanceof ArrayBuffer)) {
+                        // Handle Uint8Array (including from PublicKey.toBuffer())
+                        return new BufferImpl(data);
+                    } else if (data && typeof data.length === 'number') {
+                        // Handle array-like objects
+                        return new BufferImpl(new Uint8Array(data));
+                    }
+                    // Fallback: try to convert
+                    try {
+                        return new BufferImpl(new Uint8Array(data));
+                    } catch (e) {
+                        console.error('[Buffer] Failed to convert data:', data, e);
+                        return new BufferImpl(new Uint8Array(0));
+                    }
+                };
+                
+                BufferImpl.alloc = function(size, fill) {
+                    const buf = new BufferImpl(new Uint8Array(size));
+                    if (fill !== undefined) {
+                        buf.data.fill(fill);
+                    }
+                    return buf;
+                };
+                
+                BufferImpl.concat = function(arrays) {
+                    const totalLength = arrays.reduce((sum, arr) => {
+                        const len = arr instanceof BufferImpl ? arr.length : arr.length;
+                        return sum + len;
+                    }, 0);
+                    const result = new Uint8Array(totalLength);
+                    let offset = 0;
+                    for (const arr of arrays) {
+                        const data = arr instanceof BufferImpl ? arr.data : arr;
+                        result.set(data, offset);
+                        offset += data.length;
+                    }
+                    return new BufferImpl(result);
+                };
+                
+                // Instance methods
+                BufferImpl.prototype.writeBigUInt64LE = function(value, offset) {
+                    offset = offset || 0;
+                    const view = new DataView(this.buffer, offset);
+                    view.setBigUint64(0, BigInt(value), true); // little-endian
+                };
+                
+                BufferImpl.prototype.writeUInt8 = function(value, offset) {
+                    this.data[offset || 0] = value;
+                };
+                
+                BufferImpl.prototype.writeUInt32LE = function(value, offset) {
+                    offset = offset || 0;
+                    const view = new DataView(this.buffer, offset);
+                    view.setUint32(0, value, true); // little-endian
+                };
+                
+                BufferImpl.prototype.copy = function(target, targetStart, sourceStart, sourceEnd) {
+                    targetStart = targetStart || 0;
+                    sourceStart = sourceStart || 0;
+                    sourceEnd = sourceEnd || this.length;
+                    const sourceData = this.data.subarray(sourceStart, sourceEnd);
+                    if (target instanceof BufferImpl) {
+                        target.data.set(sourceData, targetStart);
+                    } else if (target instanceof Uint8Array) {
+                        target.set(sourceData, targetStart);
+                    }
+                };
+                
+                // Make it work with PublicKey.toBuffer()
+                BufferImpl.prototype.slice = function(start, end) {
+                    return new BufferImpl(this.data.slice(start, end));
+                };
+                
+                return BufferImpl;
+            }
+            
+            // Install immediately - set Buffer globally BEFORE wrapping
+            const BufferPolyfill = createBufferPolyfill();
+            
+            // CRITICAL: Set Buffer on window FIRST, before any other code runs
+            if (typeof window !== 'undefined') {
+                window.Buffer = BufferPolyfill;
+            }
+            
+            // Set Buffer in all possible global locations
+            if (typeof global === 'undefined') {
+                if (typeof window !== 'undefined') {
+                    window.global = window;
+                }
+            }
+            if (typeof global !== 'undefined') {
+                global.Buffer = BufferPolyfill;
+            }
+            
+            // Also set it on globalThis
+            if (typeof globalThis !== 'undefined') {
+                globalThis.Buffer = BufferPolyfill;
+            }
+            
+            // CRITICAL: Also set it as a direct global variable (not just window.Buffer)
+            // This makes it accessible as just "Buffer" without window prefix
+            try {
+                // Use eval to set in global scope (only way to set true global in strict mode)
+                (function() {
+                    // Non-strict mode wrapper to set global
+                    var root = (function() { return this; })();
+                    if (root) {
+                        root.Buffer = BufferPolyfill;
+                    }
+                })();
+            } catch (e) {
+                // Fallback: just ensure window.Buffer is set
+                console.warn('[Buffer] Could not set Buffer as direct global:', e);
+            }
+            
+            console.log('[Buffer] Inline polyfill loaded synchronously');
+            console.log('[Buffer] window.Buffer type:', typeof window.Buffer);
+            console.log('[Buffer] window.Buffer.from:', typeof window.Buffer !== 'undefined' ? typeof window.Buffer.from : 'undefined');
+            console.log('[Buffer] Direct Buffer check:', typeof Buffer);
+            console.log('[Buffer] global.Buffer:', typeof global !== 'undefined' ? typeof global.Buffer : 'global undefined');
+            
+            // Dispatch bufferReady event immediately
+            if (typeof window !== 'undefined' && window.dispatchEvent) {
+                try {
+                    window.dispatchEvent(new Event('bufferReady'));
+                    console.log('[Buffer] bufferReady event dispatched');
+                } catch (e) {
+                    console.warn('[Buffer] Could not dispatch bufferReady event:', e);
+                    // Fallback: trigger after a tiny delay
+                    setTimeout(function() {
+                        if (window.dispatchEvent) {
+                            window.dispatchEvent(new Event('bufferReady'));
+                        }
+                    }, 10);
+                }
+            }
+            
+            // Try to load full buffer polyfill in background for better compatibility
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js';
+            script.async = true;
+            script.onload = function() {
+                if (typeof buffer !== 'undefined' && buffer.Buffer) {
+                    window.Buffer = buffer.Buffer;
+                    global.Buffer = buffer.Buffer;
+                    console.log('[Buffer] Full polyfill loaded, replacing inline version');
+                    window.dispatchEvent(new Event('bufferReady'));
+                }
+            };
+            script.onerror = function() {
+                console.warn('[Buffer] Failed to load full polyfill from CDN, using inline version');
+            };
+            document.head.appendChild(script);
+        })();
+        
+        // CRITICAL: Ensure Buffer is accessible globally after IIFE
+        // This is a fallback to ensure Buffer is truly global
+        if (typeof window !== 'undefined' && window.Buffer) {
+            // Make Buffer available without window prefix by creating a reference
+            // Note: In strict mode, we can't create true globals, but window.Buffer should work
+            console.log('[Buffer] Post-IIFE check - window.Buffer available:', typeof window.Buffer !== 'undefined');
+        } else {
+            console.error('[Buffer] CRITICAL: Buffer not found on window after initialization!');
+        }
+    </script>
+    
+    <!-- Ensure Buffer is accessible - create a global reference -->
+    <script>
+        // This script runs immediately after Buffer polyfill
+        // It ensures Buffer is accessible as a global variable
+        if (typeof window !== 'undefined' && window.Buffer) {
+            // In browser context, window.Buffer should be accessible as Buffer
+            // But to be safe, we'll also check and log
+            console.log('[Buffer] Global check script - window.Buffer:', typeof window.Buffer);
+            console.log('[Buffer] Global check script - Buffer (direct):', typeof Buffer);
+            
+            // Verify Buffer methods are available
+            if (window.Buffer && typeof window.Buffer.from === 'function') {
+                console.log('[Buffer] ✅ Buffer polyfill is properly initialized');
+            } else {
+                console.error('[Buffer] ❌ Buffer polyfill missing methods!');
+            }
+        } else {
+            console.error('[Buffer] ❌ Buffer not found on window object!');
+        }
+    </script>
+    
+    <!-- Configuration Loader - Load before other scripts -->
+    <script src="config-loader.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -171,6 +406,22 @@
 
         .btn-clear:hover {
             background: rgba(136, 136, 136, 0.5);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00aaff 0%, #0088cc 100%);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(0, 170, 255, 0.5);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .btn-cancel {
@@ -720,6 +971,9 @@
         <!-- Order Book Panel -->
         <div class="panel glass-panel order-book-panel">
             <h3>Order Book</h3>
+            <button id="fetchOrderBookBtn" class="btn btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="if(window.fetchOrderBookState){window.fetchOrderBookState();}else{log('[OrderBook] Function not ready', 'error');}">
+                Fetch Order Book
+            </button>
             <div class="order-book" id="orderBook">
                 <div class="empty-state">No orders in the book</div>
             </div>
@@ -1297,14 +1551,36 @@
         }
 
         // ================= Order Placement =================
+        // Wait for ZK2P module to be ready
+        async function waitForZK2P(maxAttempts = 50) {
+            for (let i = 0; i < maxAttempts; i++) {
+                if (window.ZK2P && window.ZK2P.getOrCreateTokenAccount && window.ZK2P.createPlaceOrderTransaction) {
+                    return true;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            return false;
+        }
+        
         async function placeAskOrder() {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1554',message:'placeAskOrder ENTRY',data:{hasPhantomWallet:!!phantomWallet,hasConnectedPubkey:!!connectedPubkey,hasZK2P:!!window.ZK2P,hasGetOrCreateTokenAccount:!!(window.ZK2P && window.ZK2P.getOrCreateTokenAccount)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
+            // #endregion
+            
             if (!phantomWallet || !connectedPubkey) {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1556',message:'placeAskOrder - wallet not connected',data:{phantomWallet:!!phantomWallet,connectedPubkey:!!connectedPubkey},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
+                // #endregion
                 log('[Error] Please connect Phantom wallet first', 'error');
                 return;
             }
 
-            // Check if ZK2P is available
-            if (!window.ZK2P || !window.ZK2P.getOrCreateTokenAccount) {
+            // Wait for ZK2P module to be ready
+            const zk2pReady = await waitForZK2P();
+            if (!zk2pReady) {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1561',message:'placeAskOrder - ZK2P not available after wait',data:{hasZK2P:!!window.ZK2P,hasGetOrCreateTokenAccount:!!(window.ZK2P && window.ZK2P.getOrCreateTokenAccount)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
+                // #endregion
                 log('[Error] ZK2P module not loaded. Please refresh the page.', 'error');
                 return;
             }
@@ -1335,13 +1611,25 @@
             log(`[Order] Placing ASK: ${amount} @ $${price}...`, 'info');
 
             try {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1592',message:'placeAskOrder - building transaction',data:{tokenMint:tokenMintStr,hasAppConfig:!!appConfig,programId:appConfig?.programId || 'default',amount,price,orderType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
+                // #endregion
+                
                 // Build and send on-chain transaction
                 const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
                 const programId = new solanaWeb3.PublicKey(appConfig?.programId || 'Bk2pKQsXXvjPChX2G8AWgwoefnwRbTSirtHGnG8yUEdB');
                 const wallet = new solanaWeb3.PublicKey(connectedPubkey);
                 
                 // Get user's token account (ATA)
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1598',message:'Calling getOrCreateTokenAccount',data:{wallet:wallet.toString(),tokenMint:tokenMint.toString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
+                // #endregion
+                
                 const userTokenAccount = await window.ZK2P.getOrCreateTokenAccount(connection, wallet, tokenMint);
+                
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1602',message:'Creating place order transaction',data:{side:'ask',price,quantity:amount,orderTypeValue:orderType === 'fok' ? 4 : 0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
+                // #endregion
                 
                 const orderTypeValue = orderType === 'fok' ? 4 : 0; // 0 = Limit, 4 = FOK
                 
@@ -1357,6 +1645,10 @@
                     orderType: orderTypeValue,
                     paymentMethod
                 });
+
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1616',message:'Signing and sending transaction via Phantom',data:{hasTransaction:!!transaction,hasPhantomWallet:!!phantomWallet},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
+                // #endregion
 
                 // Sign and send via Phantom
                 const { signature } = await phantomWallet.signAndSendTransaction(transaction);
@@ -1382,8 +1674,9 @@
                 return;
             }
 
-            // Check if ZK2P is available
-            if (!window.ZK2P || !window.ZK2P.getOrCreateTokenAccount) {
+            // Wait for ZK2P module to be ready
+            const zk2pReady = await waitForZK2P();
+            if (!zk2pReady) {
                 log('[Error] ZK2P module not loaded. Please refresh the page.', 'error');
                 return;
             }
@@ -1725,31 +2018,63 @@
 
         // ================= Fetch On-Chain OrderBook State =================
         window.fetchOrderBookState = async function() {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1981',message:'fetchOrderBookState ENTRY',data:{hasAppConfig:!!appConfig,hasDefaultTokenMint:!!(appConfig && appConfig.defaultTokenMint)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
+            // #endregion
+            
             if (!appConfig || !appConfig.defaultTokenMint) {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1983',message:'Config check FAILED',data:{appConfig:appConfig ? 'exists' : 'null',hasDefaultTokenMint:!!(appConfig && appConfig.defaultTokenMint)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
+                // #endregion
                 log('[OrderBook] Config not loaded yet', 'warning');
                 return;
             }
 
             // Ensure Buffer is available
+            // #region agent log
+            const bufferCheck = typeof Buffer !== 'undefined' && typeof Buffer.from === 'function';
+            fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1988',message:'Buffer availability check',data:{bufferAvailable:bufferCheck,typeofBuffer:typeof Buffer,hasBufferFrom:typeof Buffer !== 'undefined' ? typeof Buffer.from : 'Buffer undefined',windowBuffer:typeof window !== 'undefined' ? typeof window.Buffer : 'window undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+            // #endregion
+            
             if (typeof Buffer === 'undefined' || typeof Buffer.from !== 'function') {
                 log('[OrderBook] Buffer not available - waiting...', 'warning');
                 await new Promise(resolve => setTimeout(resolve, 500));
-                if (typeof Buffer === 'undefined' || typeof Buffer.from !== 'function') {
+                
+                // Check Buffer in multiple locations
+                const BufferRef = (typeof window !== 'undefined' && window.Buffer) || Buffer || (typeof global !== 'undefined' && global.Buffer);
+                if (!BufferRef || typeof BufferRef.from !== 'function') {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1995',message:'Buffer still not available after wait',data:{BufferRef:BufferRef ? 'exists' : 'null',hasBufferRefFrom:BufferRef ? typeof BufferRef.from : 'BufferRef null'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+                    // #endregion
                     log('[OrderBook] Buffer still not available - please refresh page', 'error');
+                    console.error('[OrderBook] Debug - window.Buffer:', typeof window !== 'undefined' ? typeof window.Buffer : 'window undefined');
+                    console.error('[OrderBook] Debug - Buffer:', typeof Buffer);
                     return;
                 }
             }
 
             try {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2002',message:'Starting OrderBook fetch - BEFORE PDA derivation',data:{tokenMint:appConfig.defaultTokenMint,programId:appConfig.programId,hasConnection:!!connection,hasSolanaWeb3:typeof solanaWeb3 !== 'undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+                // #endregion
+                
                 const tokenMintStr = document.getElementById('tokenMint')?.value || appConfig.defaultTokenMint;
                 const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
                 const programId = new solanaWeb3.PublicKey(appConfig.programId);
 
                 // Derive OrderBook PDA
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2008',message:'Deriving OrderBook PDA',data:{tokenMint:tokenMint.toString(),programId:programId.toString(),bufferAvailable:typeof Buffer !== 'undefined' && typeof Buffer.from === 'function'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+                // #endregion
+                
                 const [orderBookPda] = await solanaWeb3.PublicKey.findProgramAddress(
                     [Buffer.from('order_book'), tokenMint.toBuffer()],
                     programId
                 );
+
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2014',message:'Fetching account info from chain',data:{orderBookPda:orderBookPda.toString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+                // #endregion
 
                 // Fetch account data
                 const accountInfo = await connection.getAccountInfo(orderBookPda);
@@ -1768,15 +2093,31 @@
                     const idl = await idlResponse.json();
                     
                     // Ensure Anchor is available (try multiple possible global names)
+                    // #region agent log
+                    const anchorCheck = {windowAnchor:typeof window !== 'undefined' ? typeof window.anchor : 'window undefined',windowAnchorCap:typeof window !== 'undefined' ? typeof window.Anchor : 'window undefined',anchorVar:typeof anchor};
+                    fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2030',message:'Checking Anchor library availability',data:anchorCheck,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
+                    // #endregion
+                    
                     const Anchor = window.anchor || window.Anchor || anchor;
                     if (!Anchor) {
+                        // #region agent log
+                        fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2032',message:'Anchor library NOT available',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
+                        // #endregion
                         throw new Error('Anchor library not loaded');
                     }
+                    
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2036',message:'Creating Anchor program instance',data:{hasIdl:!!idl,programId:programId.toString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
+                    // #endregion
                     
                     // Create Anchor program instance
                     const program = new Anchor.Program(idl, programId, {
                         connection: connection
                     });
+                    
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2042',message:'Deserializing OrderBook account',data:{accountDataLength:accountInfo.data.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
+                    // #endregion
                     
                     // Deserialize OrderBook account (Anchor handles discriminator automatically)
                     // Account data starts with 8-byte discriminator, which Anchor's decoder handles
@@ -1793,17 +2134,60 @@
                     const bestBid = orderBookAccount.bestBid || orderBookAccount.best_bid || 0;
                     const bestAsk = orderBookAccount.bestAsk || orderBookAccount.best_ask || 0;
                     const orderQueues = orderBookAccount.orderQueues || orderBookAccount.order_queues || [];
+                    const bidsTree = orderBookAccount.bids || {};
+                    const asksTree = orderBookAccount.asks || {};
                     
                     log(`[OrderBook] Deserialized - Total orders: ${totalOrders}`, 'info');
                     log(`[OrderBook] Best bid: ${bestBid}, Best ask: ${bestAsk}`, 'info');
                     log(`[OrderBook] Order queues: ${orderQueues.length}`, 'info');
+                    log(`[OrderBook] Bids tree nodes: ${bidsTree.nodes ? bidsTree.nodes.length : 0}`, 'info');
+                    log(`[OrderBook] Asks tree nodes: ${asksTree.nodes ? asksTree.nodes.length : 0}`, 'info');
+                    
+                    // Helper to traverse CritBit tree and collect order queue indices
+                    function collectQueueIndices(tree, side) {
+                        const indices = new Set();
+                        if (tree && tree.nodes && Array.isArray(tree.nodes)) {
+                            for (const node of tree.nodes) {
+                                if (node && node.isLeaf && node.orderIndex !== undefined) {
+                                    const queueIdx = Number(node.orderIndex || node.order_index || 0);
+                                    if (queueIdx < orderQueues.length) {
+                                        indices.add(queueIdx);
+                                        console.log(`[OrderBook] ${side} tree: Found leaf at price ${node.key}, queue index ${queueIdx}`);
+                                    }
+                                }
+                            }
+                        }
+                        return Array.from(indices);
+                    }
+                    
+                    // Get queue indices from CritBit trees
+                    const bidQueueIndices = collectQueueIndices(bidsTree, 'BID');
+                    const askQueueIndices = collectQueueIndices(asksTree, 'ASK');
+                    const allQueueIndices = [...new Set([...bidQueueIndices, ...askQueueIndices])];
+                    
+                    log(`[OrderBook] Found ${allQueueIndices.length} active price levels (${bidQueueIndices.length} bids, ${askQueueIndices.length} asks)`, 'info');
                     
                     // Extract all orders from order_queues
+                    // Only process queues that are referenced by CritBit trees
                     const allOrders = [];
+                    console.log('[OrderBook] Raw orderQueues:', orderQueues);
+                    console.log('[OrderBook] Active queue indices:', allQueueIndices);
+                    
                     if (Array.isArray(orderQueues)) {
-                        for (const queue of orderQueues) {
-                            const orders = queue.orders || [];
-                            if (Array.isArray(orders)) {
+                        // Process all queues, or only active ones if we found them
+                        const queuesToProcess = allQueueIndices.length > 0 ? allQueueIndices : Array.from({length: orderQueues.length}, (_, i) => i);
+                        log(`[OrderBook] Processing ${queuesToProcess.length} order queues`, 'info');
+                        
+                        for (const queueIdx of queuesToProcess) {
+                            if (queueIdx >= orderQueues.length) continue;
+                            
+                            const queue = orderQueues[queueIdx];
+                            console.log(`[OrderBook] Queue ${queueIdx}:`, queue);
+                            
+                            // Handle different possible structures
+                            const orders = queue.orders || queue.order || [];
+                            if (Array.isArray(orders) && orders.length > 0) {
+                                log(`[OrderBook] Queue ${queueIdx} has ${orders.length} orders`, 'info');
                                 for (const order of orders) {
                                     // Convert Anchor types to UI format
                                     // Handle both camelCase and snake_case property names
@@ -1851,28 +2235,63 @@
                                     const uiOrder = {
                                         order_id: orderId ? orderId.toString() : '0',
                                         owner: owner ? owner.toString() : '',
-                                        amount: Number(quantity),
-                                        price: Number(price),
+                                        amount: Number(quantity) || 0,
+                                        price: Number(price) || 0,
                                         side: sideStr,
                                         order_type: orderTypeStr,
-                                        timestamp: Number(timestamp),
+                                        timestamp: Number(timestamp) || 0,
                                         payment_status: paymentStatusStr,
                                         created_at: Number(timestamp) * 1000 || Date.now(),
                                         trader: owner ? `${owner.toString().slice(0, 4)}...${owner.toString().slice(-4)}` : 'Unknown'
                                     };
-                                    allOrders.push(uiOrder);
+                                    
+                                    // Only add if we have valid data
+                                    if (uiOrder.price > 0 && uiOrder.amount > 0) {
+                                        allOrders.push(uiOrder);
+                                        console.log('[OrderBook] Added order:', uiOrder);
+                                    } else {
+                                        console.warn('[OrderBook] Skipping invalid order:', uiOrder);
+                                    }
                                 }
+                            } else {
+                                console.warn(`[OrderBook] Queue ${i} orders is not an array:`, orders);
                             }
+                        }
+                    } else {
+                        log('[OrderBook] orderQueues is not an array, trying alternative extraction', 'warning');
+                        console.log('[OrderBook] Attempting to extract from CritBit trees directly...');
+                        
+                        // Try to extract from bids and asks trees if available
+                        const bidsTree = orderBookAccount.bids || orderBookAccount.bidsTree;
+                        const asksTree = orderBookAccount.asks || orderBookAccount.asksTree;
+                        
+                        if (bidsTree && bidsTree.nodes) {
+                            log(`[OrderBook] Found bids tree with ${bidsTree.nodes.length} nodes`, 'info');
+                        }
+                        if (asksTree && asksTree.nodes) {
+                            log(`[OrderBook] Found asks tree with ${asksTree.nodes.length} nodes`, 'info');
                         }
                     }
                     
                     // Update local order book state
                     orderBook.orders = allOrders;
-                    log(`[OrderBook] Extracted ${allOrders.length} orders from on-chain data`, 'success');
+                    
+                    if (allOrders.length > 0) {
+                        log(`[OrderBook] Extracted ${allOrders.length} orders from on-chain data`, 'success');
+                        console.log('[OrderBook] Orders to display:', allOrders);
+                    } else {
+                        log(`[OrderBook] No orders found in order_queues. Total orders reported: ${totalOrders}`, 'warning');
+                        log(`[OrderBook] Best bid: ${bestBid}, Best ask: ${bestAsk}`, 'info');
+                        console.log('[OrderBook] Full account data:', orderBookAccount);
+                    }
                     
                     // Update UI
                     renderOrderBook();
                     updateStats();
+                    
+                    // Log what's in the orderBook state
+                    console.log('[OrderBook] Final orderBook.orders:', orderBook.orders);
+                    console.log('[OrderBook] orderBook.orders.length:', orderBook.orders.length);
                     
                 } catch (deserializeError) {
                     log(`[OrderBook] Deserialization error: ${deserializeError.message}`, 'error');
@@ -1891,7 +2310,7 @@
         // Initialize
         updateStats();
         window.addEventListener('resize', () => updateVisualization());
-        
+
         // Auto-refresh OrderBook every 5 seconds if wallet connected
         setInterval(async () => {
             if (phantomWallet && connectedPubkey && appConfig) {
@@ -1900,182 +2319,164 @@
         }, 5000);
     </script>
 
-    <!-- Buffer Polyfill for Browser -->
-    <!-- Inline Buffer implementation that works immediately -->
+    <!-- Solana Web3.js and Wallet Adapter -->
+    <!-- Load dynamically after Buffer is confirmed ready -->
     <script>
         (function() {
             'use strict';
-            // Create a complete Buffer polyfill inline
-            function createBufferPolyfill() {
-                function BufferImpl(arg, encoding) {
-                    if (!(this instanceof BufferImpl)) {
-                        return new BufferImpl(arg, encoding);
-                    }
-                    
-                    if (typeof arg === 'number') {
-                        this.data = new Uint8Array(arg);
-                    } else if (typeof arg === 'string') {
-                        const encoder = new TextEncoder();
-                        this.data = encoder.encode(arg);
-                    } else if (Array.isArray(arg)) {
-                        this.data = new Uint8Array(arg);
-                    } else if (arg instanceof Uint8Array) {
-                        this.data = new Uint8Array(arg);
+            
+            let solanaWeb3Loaded = false;
+            let anchorLoaded = false;
+            
+            function checkBufferAndLoad() {
+                // Verify Buffer is available
+                if (typeof Buffer === 'undefined' || typeof Buffer.from !== 'function') {
+                    console.warn('[Init] Buffer not available yet, will retry...');
+                    return false;
+                }
+                
+                console.log('[Init] Buffer confirmed ready, loading Solana libraries...');
+                return true;
+            }
+            
+            function showBufferError() {
+                // Only show error if buffer-error div doesn't already exist
+                if (document.getElementById('buffer-error')) {
+                    return;
+                }
+                
+                // Show user-friendly error message
+                const errorDiv = document.createElement('div');
+                errorDiv.id = 'buffer-error';
+                errorDiv.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: #ff4444; color: white; padding: 15px; text-align: center; z-index: 10000; font-family: sans-serif;';
+                errorDiv.innerHTML = '<strong>Error:</strong> Buffer polyfill failed to load. Please refresh the page. If the problem persists, check your internet connection.';
+                document.body.appendChild(errorDiv);
+            }
+            
+            function loadSolanaWeb3() {
+                if (solanaWeb3Loaded) return;
+                
+                // Check Buffer without showing error (errors shown only after retries)
+                if (typeof Buffer === 'undefined' || typeof Buffer.from !== 'function') {
+                    console.warn('[Init] Buffer not ready yet, will retry...');
+                    return;
+                }
+                
+                console.log('[Init] Buffer confirmed ready, loading Solana libraries...');
+                
+                console.log('[Init] Loading @solana/web3.js...');
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js';
+                script.onload = function() {
+                    if (typeof window.solanaWeb3 !== 'undefined') {
+                        solanaWeb3Loaded = true;
+                        console.log('[Init] @solana/web3.js loaded successfully');
+                        window.dispatchEvent(new Event('solanaWeb3Ready'));
+                        loadAnchor();
                     } else {
-                        this.data = new Uint8Array(0);
+                        console.error('[Init] @solana/web3.js loaded but solanaWeb3 not found on window');
+                        showSolanaError();
                     }
-                    
-                    this.length = this.data.length;
-                    this.buffer = this.data.buffer;
-                    return this;
-                }
+                };
+                script.onerror = function() {
+                    console.error('[Init] Failed to load @solana/web3.js');
+                    showSolanaError();
+                };
+                document.head.appendChild(script);
+            }
+            
+            function loadAnchor() {
+                if (anchorLoaded) return;
                 
-                // Static methods
-                BufferImpl.from = function(data, encoding) {
-                    if (Array.isArray(data)) {
-                        return new BufferImpl(new Uint8Array(data));
-                    } else if (typeof data === 'string') {
-                        if (encoding === 'hex') {
-                            const bytes = [];
-                            for (let i = 0; i < data.length; i += 2) {
-                                bytes.push(parseInt(data.substr(i, 2), 16));
-                            }
-                            return new BufferImpl(new Uint8Array(bytes));
+                console.log('[Init] Loading @coral-xyz/anchor...');
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/@coral-xyz/anchor@0.29.0/dist/browser/index.js';
+                script.onload = function() {
+                    anchorLoaded = true;
+                    console.log('[Init] @coral-xyz/anchor loaded successfully');
+                    window.dispatchEvent(new Event('anchorReady'));
+                };
+                script.onerror = function() {
+                    console.error('[Init] Failed to load @coral-xyz/anchor');
+                };
+                document.head.appendChild(script);
+            }
+            
+            function showSolanaError() {
+                const errorDiv = document.createElement('div');
+                errorDiv.id = 'solana-error';
+                errorDiv.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: #ff4444; color: white; padding: 15px; text-align: center; z-index: 10000; font-family: sans-serif;';
+                errorDiv.innerHTML = '<strong>Error:</strong> Failed to load Solana Web3.js library. Please check your internet connection and refresh the page.';
+                document.body.appendChild(errorDiv);
+            }
+            
+            // Wait for Buffer to be ready, then load Solana libraries
+            function attemptLoadSolana() {
+                if (checkBufferAndLoad()) {
+                    loadSolanaWeb3();
+                    return true;
+                }
+                return false;
+            }
+            
+            // Try immediately if Buffer is already available
+            if (attemptLoadSolana()) {
+                // Successfully started loading
+            } else {
+                // Wait for bufferReady event
+                window.addEventListener('bufferReady', function() {
+                    if (!solanaWeb3Loaded) {
+                        attemptLoadSolana();
+                    }
+                }, { once: true });
+                
+                // Fallback: try loading after delays (give Buffer time to initialize)
+                setTimeout(function() {
+                    if (!solanaWeb3Loaded) {
+                        if (!attemptLoadSolana()) {
+                            // Still not ready, try once more after longer delay
+                            setTimeout(function() {
+                                if (!solanaWeb3Loaded && !attemptLoadSolana()) {
+                                    // After multiple attempts, show error only if Buffer truly isn't available
+                                    if (typeof Buffer === 'undefined' || typeof Buffer.from !== 'function') {
+                                        console.error('[Init] Buffer still not available after waiting');
+                                        showBufferError();
+                                    }
+                                }
+                            }, 1000);
                         }
-                        const encoder = new TextEncoder();
-                        return new BufferImpl(encoder.encode(data));
-                    } else if (data instanceof Uint8Array || (data && data.buffer instanceof ArrayBuffer)) {
-                        // Handle Uint8Array (including from PublicKey.toBuffer())
-                        return new BufferImpl(data);
-                    } else if (data && typeof data.length === 'number') {
-                        // Handle array-like objects
-                        return new BufferImpl(new Uint8Array(data));
                     }
-                    // Fallback: try to convert
-                    try {
-                        return new BufferImpl(new Uint8Array(data));
-                    } catch (e) {
-                        console.error('[Buffer] Failed to convert data:', data, e);
-                        return new BufferImpl(new Uint8Array(0));
-                    }
-                };
-                
-                BufferImpl.alloc = function(size, fill) {
-                    const buf = new BufferImpl(new Uint8Array(size));
-                    if (fill !== undefined) {
-                        buf.data.fill(fill);
-                    }
-                    return buf;
-                };
-                
-                BufferImpl.concat = function(arrays) {
-                    const totalLength = arrays.reduce((sum, arr) => {
-                        const len = arr instanceof BufferImpl ? arr.length : arr.length;
-                        return sum + len;
-                    }, 0);
-                    const result = new Uint8Array(totalLength);
-                    let offset = 0;
-                    for (const arr of arrays) {
-                        const data = arr instanceof BufferImpl ? arr.data : arr;
-                        result.set(data, offset);
-                        offset += data.length;
-                    }
-                    return new BufferImpl(result);
-                };
-                
-                // Instance methods
-                BufferImpl.prototype.writeBigUInt64LE = function(value, offset) {
-                    offset = offset || 0;
-                    const view = new DataView(this.buffer, offset);
-                    view.setBigUint64(0, BigInt(value), true); // little-endian
-                };
-                
-                BufferImpl.prototype.writeUInt8 = function(value, offset) {
-                    this.data[offset || 0] = value;
-                };
-                
-                BufferImpl.prototype.writeUInt32LE = function(value, offset) {
-                    offset = offset || 0;
-                    const view = new DataView(this.buffer, offset);
-                    view.setUint32(0, value, true); // little-endian
-                };
-                
-                BufferImpl.prototype.copy = function(target, targetStart, sourceStart, sourceEnd) {
-                    targetStart = targetStart || 0;
-                    sourceStart = sourceStart || 0;
-                    sourceEnd = sourceEnd || this.length;
-                    const sourceData = this.data.subarray(sourceStart, sourceEnd);
-                    if (target instanceof BufferImpl) {
-                        target.data.set(sourceData, targetStart);
-                    } else if (target instanceof Uint8Array) {
-                        target.set(sourceData, targetStart);
-                    }
-                };
-                
-                // Make it work with PublicKey.toBuffer()
-                BufferImpl.prototype.slice = function(start, end) {
-                    return new BufferImpl(this.data.slice(start, end));
-                };
-                
-                return BufferImpl;
+                }, 300);
             }
-            
-            // Install immediately
-            const BufferPolyfill = createBufferPolyfill();
-            window.Buffer = BufferPolyfill;
-            if (typeof global === 'undefined') {
-                window.global = window;
-            }
-            global.Buffer = BufferPolyfill;
-            
-            console.log('[Buffer] Inline polyfill loaded');
-            console.log('[Buffer] Buffer.from available:', typeof Buffer.from === 'function');
-            console.log('[Buffer] Buffer.alloc available:', typeof Buffer.alloc === 'function');
-            
-            // Try to load full buffer polyfill in background for better compatibility
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js';
-            script.async = true;
-            script.onload = function() {
-                if (typeof buffer !== 'undefined' && buffer.Buffer) {
-                    window.Buffer = buffer.Buffer;
-                    global.Buffer = buffer.Buffer;
-                    console.log('[Buffer] Full polyfill loaded, replacing inline version');
-                    window.dispatchEvent(new Event('bufferReady'));
-                }
-            };
-            document.head.appendChild(script);
         })();
     </script>
     
-    <!-- Solana Web3.js and Wallet Adapter -->
-    <!-- Load after Buffer is ready -->
-    <script>
-        // Ensure Buffer is available before loading Solana libraries
-        if (typeof Buffer === 'undefined' || typeof Buffer.from !== 'function') {
-            console.error('[Init] Buffer not available before loading Solana libraries!');
-        } else {
-            console.log('[Init] Buffer ready, loading Solana libraries...');
-        }
-    </script>
-    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
-    <script src="https://unpkg.com/@coral-xyz/anchor@0.29.0/dist/browser/index.js"></script>
-    
     <!-- Phantom Wallet Integration -->
+    <!-- Wait for Solana Web3.js to load before initializing -->
     <script>
-        // Solana Web3 Configuration
-        const DEVNET_RPC = 'https://api.devnet.solana.com';
-        const connection = new solanaWeb3.Connection(DEVNET_RPC, 'confirmed');
-        
-        // Deployed Program IDs on Devnet
-        const PROGRAM_IDS = {
-            market: 'Bk2pKQsXXvjPChX2G8AWgwoefnwRbTSirtHGnG8yUEdB',
-            orderStore: '9eVsFt83o3qkfaKNMZ6wuom2HL6ScB9sF3NikzDnxrNb',
-            orderProcessor: 'Gn8GGrCgmBQs4tRvf2oeWXjgsqHBcYByDhQiAxGdfFqV'
-        };
-        
-        let phantomWallet = null;
-        let connectedPubkey = null;
+        (function() {
+            'use strict';
+            
+            function initPhantomIntegration() {
+                // Verify solanaWeb3 is available
+                if (typeof window === 'undefined' || typeof window.solanaWeb3 === 'undefined') {
+                    console.error('[Phantom] solanaWeb3 not available yet');
+                    return false;
+                }
+                
+                // Solana Web3 Configuration
+                const DEVNET_RPC = 'https://api.devnet.solana.com';
+                const connection = new solanaWeb3.Connection(DEVNET_RPC, 'confirmed');
+                
+                // Deployed Program IDs on Devnet
+                const PROGRAM_IDS = {
+                    market: 'Bk2pKQsXXvjPChX2G8AWgwoefnwRbTSirtHGnG8yUEdB',
+                    orderStore: '9eVsFt83o3qkfaKNMZ6wuom2HL6ScB9sF3NikzDnxrNb',
+                    orderProcessor: 'Gn8GGrCgmBQs4tRvf2oeWXjgsqHBcYByDhQiAxGdfFqV'
+                };
+                
+                let phantomWallet = null;
+                let connectedPubkey = null;
         
         // Detect and connect to Phantom
         async function detectPhantom() {
@@ -2105,10 +2506,17 @@
                 
                 log(`[Wallet] Connected: ${connectedPubkey.slice(0, 8)}...${connectedPubkey.slice(-8)}`, 'success');
                 
-                // Load config.json
+                // Load config using config-loader.js
                 try {
-                    const configResp = await fetch('config.json');
-                    appConfig = await configResp.json();
+                    if (window.ZK2PConfig && window.ZK2PConfig.loadConfig) {
+                        appConfig = await window.ZK2PConfig.loadConfig();
+                        console.log(`[Config] Loaded config for ${appConfig.network || 'devnet'}`);
+                    } else {
+                        // Fallback: try to load config.json directly
+                        const configResp = await fetch('config.json');
+                        appConfig = await configResp.json();
+                        console.log('[Config] Loaded fallback config.json');
+                    }
                     
                     // Populate token mint input with default if empty
                     const tokenMintInput = document.getElementById('tokenMint');
@@ -2116,9 +2524,10 @@
                         tokenMintInput.value = appConfig.defaultTokenMint;
                     }
                     
-                    log('[Config] Loaded config.json successfully', 'success');
+                    log(`[Config] Loaded ${appConfig.network || 'devnet'} config successfully`, 'success');
                 } catch (err) {
-                    log(`[Config] Warning: Could not load config.json - ${err.message}`, 'warning');
+                    log(`[Config] Warning: Could not load config - ${err.message}`, 'warning');
+                    console.error('[Config] Error:', err);
                 }
                 
                 // Update UI with connected wallet
@@ -2197,17 +2606,99 @@
             }
         }
         
+        // Setup Fetch Order Book button handler after everything is loaded
+        function setupFetchOrderBookButton() {
+            const fetchOrderBookBtn = document.getElementById('fetchOrderBookBtn');
+            if (!fetchOrderBookBtn) {
+                console.warn('[OrderBook] Fetch button not found');
+                return;
+            }
+            
+            // Remove any existing click handlers by cloning
+            const newBtn = fetchOrderBookBtn.cloneNode(true);
+            fetchOrderBookBtn.parentNode.replaceChild(newBtn, fetchOrderBookBtn);
+            
+            newBtn.addEventListener('click', async function() {
+                console.log('[OrderBook] Button clicked');
+                
+                if (!window.fetchOrderBookState) {
+                    log('[OrderBook] Fetch function not available yet. Please wait...', 'error');
+                    console.error('[OrderBook] window.fetchOrderBookState is not defined');
+                    return;
+                }
+                
+                newBtn.disabled = true;
+                const originalText = newBtn.textContent;
+                newBtn.textContent = 'Fetching...';
+                
+                try {
+                    log('[OrderBook] Fetching order book from blockchain...', 'info');
+                    await window.fetchOrderBookState();
+                    log('[OrderBook] Fetch complete!', 'success');
+                } catch (error) {
+                    log(`[OrderBook] Error: ${error.message}`, 'error');
+                    console.error('[OrderBook] Fetch error:', error);
+                } finally {
+                    newBtn.disabled = false;
+                    newBtn.textContent = originalText;
+                }
+            });
+            
+            console.log('[OrderBook] Fetch button handler attached successfully');
+        }
+        
+        // Setup button after page loads
+        window.addEventListener('load', () => {
+            setTimeout(setupFetchOrderBookButton, 1500);
+        });
+        
+        // Also try immediately if already loaded
+        if (document.readyState === 'complete') {
+            setTimeout(setupFetchOrderBookButton, 500);
+        }
+
         // Check if on-chain accounts are initialized
         async function checkInitialization() {
+            // #region agent log
+            const initBufferCheck = (typeof window !== 'undefined' && typeof window.Buffer !== 'undefined' && typeof window.Buffer.from === 'function') ||
+                                   (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') ||
+                                   (typeof global !== 'undefined' && typeof global.Buffer !== 'undefined' && typeof global.Buffer.from === 'function');
+            fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2648',message:'checkInitialization ENTRY',data:{bufferAvailable:initBufferCheck,typeofBuffer:typeof Buffer,windowBuffer:typeof window !== 'undefined' ? typeof window.Buffer : 'window undefined',hasZK2P:!!window.ZK2P},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+            // #endregion
+            
             try {
-                // Ensure Buffer is available
-                if (typeof Buffer === 'undefined' || typeof Buffer.from !== 'function') {
+                // Ensure Buffer is available (check both window.Buffer and global Buffer)
+                const bufferAvailable = (typeof window !== 'undefined' && typeof window.Buffer !== 'undefined' && typeof window.Buffer.from === 'function') ||
+                                       (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') ||
+                                       (typeof global !== 'undefined' && typeof global.Buffer !== 'undefined' && typeof global.Buffer.from === 'function');
+                
+                if (!bufferAvailable) {
                     log('[Init] Buffer not available - waiting...', 'warning');
                     await new Promise(resolve => setTimeout(resolve, 500));
-                    if (typeof Buffer === 'undefined' || typeof Buffer.from !== 'function') {
+                    
+                    // Check again after wait
+                    const bufferAvailableAfterWait = (typeof window !== 'undefined' && typeof window.Buffer !== 'undefined' && typeof window.Buffer.from === 'function') ||
+                                                    (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') ||
+                                                    (typeof global !== 'undefined' && typeof global.Buffer !== 'undefined' && typeof global.Buffer.from === 'function');
+                    
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/b49538f5-4df2-40b6-9a49-131497c6fe63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2659',message:'checkInitialization - Buffer check after wait',data:{bufferAvailable:bufferAvailableAfterWait},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+                    // #endregion
+                    
+                    if (!bufferAvailableAfterWait) {
                         log('[Init] Buffer still not available - please refresh page', 'error');
+                        console.error('[Init] Debug - window.Buffer:', typeof window !== 'undefined' ? typeof window.Buffer : 'window undefined');
+                        console.error('[Init] Debug - Buffer:', typeof Buffer);
+                        console.error('[Init] Debug - global.Buffer:', typeof global !== 'undefined' ? typeof global.Buffer : 'global undefined');
                         return false;
                     }
+                }
+                
+                // Ensure we're using the correct Buffer reference
+                const BufferRef = (typeof window !== 'undefined' && window.Buffer) || Buffer || (typeof global !== 'undefined' && global.Buffer);
+                if (!BufferRef || typeof BufferRef.from !== 'function') {
+                    log('[Init] Buffer reference invalid', 'error');
+                    return false;
                 }
                 
                 const tokenMintStr = document.getElementById('tokenMint')?.value || appConfig.defaultTokenMint;
@@ -2219,9 +2710,16 @@
                 const tokenMint = new solanaWeb3.PublicKey(tokenMintStr);
                 const programId = new solanaWeb3.PublicKey(appConfig.programId);
                 
+                // Ensure Buffer is available for PDA derivation
+                const BufferRef = (typeof window !== 'undefined' && window.Buffer) || Buffer || (typeof global !== 'undefined' && global.Buffer);
+                if (!BufferRef || typeof BufferRef.from !== 'function') {
+                    log('[Init] Buffer not available for PDA derivation', 'error');
+                    return false;
+                }
+                
                 // Check Market
                 const [market] = await solanaWeb3.PublicKey.findProgramAddress(
-                    [Buffer.from('market'), tokenMint.toBuffer()],
+                    [BufferRef.from('market'), tokenMint.toBuffer()],
                     programId
                 );
                 const marketInfo = await connection.getAccountInfo(market);
@@ -2233,7 +2731,7 @@
                 
                 // Check OrderBook
                 const [orderBook] = await solanaWeb3.PublicKey.findProgramAddress(
-                    [Buffer.from('order_book'), tokenMint.toBuffer()],
+                    [BufferRef.from('order_book'), tokenMint.toBuffer()],
                     programId
                 );
                 const orderBookInfo = await connection.getAccountInfo(orderBook);
@@ -2245,7 +2743,7 @@
                 
                 // Check EscrowVault
                 const [escrowVault] = await solanaWeb3.PublicKey.findProgramAddress(
-                    [Buffer.from('escrow_vault'), tokenMint.toBuffer()],
+                    [BufferRef.from('escrow_vault'), tokenMint.toBuffer()],
                     programId
                 );
                 const vaultInfo = await connection.getAccountInfo(escrowVault);
@@ -2285,9 +2783,33 @@
             });
         }
         
-        console.log('[2k2Peer] Phantom wallet integration ready');
-        console.log('[2k2Peer] Market Program ID:', PROGRAM_IDS.market);
-        console.log('[2k2Peer] P2P Payment status tracking enabled');
+                console.log('[2k2Peer] Phantom wallet integration ready');
+                console.log('[2k2Peer] Market Program ID:', PROGRAM_IDS.market);
+                console.log('[2k2Peer] P2P Payment status tracking enabled');
+                
+                return true;
+            }
+            
+            // Wait for solanaWeb3 to be ready before initializing
+            if (typeof window !== 'undefined' && typeof window.solanaWeb3 !== 'undefined') {
+                // Already available, initialize immediately
+                initPhantomIntegration();
+            } else {
+                // Wait for solanaWeb3Ready event
+                window.addEventListener('solanaWeb3Ready', function() {
+                    initPhantomIntegration();
+                }, { once: true });
+                
+                // Fallback: try after a delay
+                setTimeout(function() {
+                    if (typeof window !== 'undefined' && typeof window.solanaWeb3 !== 'undefined') {
+                        initPhantomIntegration();
+                    } else {
+                        console.error('[Phantom] solanaWeb3 not available after waiting');
+                    }
+                }, 1000);
+            }
+        })();
     </script>
     
     <!-- ZK Fiat Mode Toggle Logic -->
@@ -2324,27 +2846,99 @@
     </script>
     
     <!-- On-chain Transaction Integration -->
-    <!-- Load after Buffer is ready -->
+    <!-- Load after Buffer and Solana Web3.js are ready -->
     <script>
-        // Wait for Buffer before loading onchain-transactions.js
+        // Wait for both Buffer and Solana Web3.js before loading onchain-transactions.js
+        let onchainTransactionsLoading = false;
+        let onchainTransactionsTimeout = null;
+        
         function loadOnchainTransactions() {
-            if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
+            // Prevent duplicate loads
+            if (onchainTransactionsLoading) {
+                return;
+            }
+            
+            const bufferReady = typeof Buffer !== 'undefined' && typeof Buffer.from === 'function';
+            const solanaReady = typeof window !== 'undefined' && typeof window.solanaWeb3 !== 'undefined';
+            
+            if (bufferReady && solanaReady) {
+                onchainTransactionsLoading = true;
+                if (onchainTransactionsTimeout) {
+                    clearTimeout(onchainTransactionsTimeout);
+                    onchainTransactionsTimeout = null;
+                }
+                
+                console.log('[Init] Loading onchain-transactions.js (Buffer and Solana Web3.js ready)');
                 const script = document.createElement('script');
                 script.src = 'onchain-transactions.js';
                 script.onload = function() {
-                    console.log('[Init] Onchain transactions module loaded');
+                    console.log('[Init] Onchain transactions module loaded successfully');
                 };
                 script.onerror = function() {
                     console.error('[Init] Failed to load onchain-transactions.js');
+                    onchainTransactionsLoading = false; // Allow retry on error
+                    
+                    // Show error to user
+                    const errorMsg = document.createElement('div');
+                    errorMsg.style.cssText = 'position: fixed; top: 50px; left: 0; right: 0; background: #ff4444; color: white; padding: 15px; text-align: center; z-index: 10000; font-family: sans-serif;';
+                    errorMsg.innerHTML = '<strong>Error:</strong> Failed to load transaction module. Please refresh the page.';
+                    document.body.appendChild(errorMsg);
                 };
                 document.head.appendChild(script);
             } else {
-                // Wait for bufferReady event
-                window.addEventListener('bufferReady', loadOnchainTransactions, { once: true });
-                // Also try after a delay
-                setTimeout(loadOnchainTransactions, 1000);
+                // Wait for both dependencies
+                let bufferHandler = null;
+                let solanaHandler = null;
+                let dependenciesReady = false;
+                
+                const checkAndLoad = function() {
+                    if (dependenciesReady) return;
+                    
+                    const bufReady = typeof Buffer !== 'undefined' && typeof Buffer.from === 'function';
+                    const solReady = typeof window !== 'undefined' && typeof window.solanaWeb3 !== 'undefined';
+                    
+                    if (bufReady && solReady) {
+                        dependenciesReady = true;
+                        if (bufferHandler) {
+                            window.removeEventListener('bufferReady', bufferHandler);
+                        }
+                        if (solanaHandler) {
+                            window.removeEventListener('solanaWeb3Ready', solanaHandler);
+                        }
+                        if (onchainTransactionsTimeout) {
+                            clearTimeout(onchainTransactionsTimeout);
+                            onchainTransactionsTimeout = null;
+                        }
+                        loadOnchainTransactions();
+                    }
+                };
+                
+                if (!bufferReady) {
+                    bufferHandler = checkAndLoad;
+                    window.addEventListener('bufferReady', bufferHandler, { once: true });
+                }
+                
+                if (!solanaReady) {
+                    solanaHandler = checkAndLoad;
+                    window.addEventListener('solanaWeb3Ready', solanaHandler, { once: true });
+                }
+                
+                // Check immediately in case events already fired
+                checkAndLoad();
+                
+                // Fallback: try after a delay
+                if (onchainTransactionsTimeout) {
+                    clearTimeout(onchainTransactionsTimeout);
+                }
+                onchainTransactionsTimeout = setTimeout(function() {
+                    if (!onchainTransactionsLoading) {
+                        checkAndLoad();
+                    }
+                }, 2000);
             }
         }
+        
+        // Start loading process
         loadOnchainTransactions();
     </script>
 </body>

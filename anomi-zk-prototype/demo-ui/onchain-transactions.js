@@ -5,37 +5,81 @@
 (function() {
     'use strict';
     
-// Wait for Buffer to be available (polyfill loads asynchronously)
-function waitForBuffer(callback, maxAttempts = 100) {
-    if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function' && typeof Buffer.alloc === 'function') {
-        console.log('[ZK2P] Buffer is available, initializing...');
+// Wait for both Buffer and Solana Web3.js to be available
+function waitForDependencies(callback, maxAttempts = 200) {
+    const bufferReady = typeof Buffer !== 'undefined' && typeof Buffer.from === 'function' && typeof Buffer.alloc === 'function';
+    const solanaReady = typeof window !== 'undefined' && typeof window.solanaWeb3 !== 'undefined';
+    
+    if (bufferReady && solanaReady) {
+        console.log('[ZK2P] All dependencies available, initializing...');
+        console.log('[ZK2P] Buffer.from available:', typeof Buffer.from === 'function');
+        console.log('[ZK2P] Buffer.alloc available:', typeof Buffer.alloc === 'function');
+        console.log('[ZK2P] solanaWeb3 available:', typeof window.solanaWeb3 !== 'undefined');
         callback();
     } else if (maxAttempts > 0) {
-        // Listen for bufferReady event
+        // Set up event listeners for both dependencies
         if (typeof window !== 'undefined' && window.addEventListener) {
-            const handler = function() {
-                window.removeEventListener('bufferReady', handler);
-                if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
+            let bufferHandler = null;
+            let solanaHandler = null;
+            let bothReady = false;
+            
+            const checkAndInit = function() {
+                if (bothReady) return;
+                
+                const bufReady = typeof Buffer !== 'undefined' && typeof Buffer.from === 'function' && typeof Buffer.alloc === 'function';
+                const solReady = typeof window !== 'undefined' && typeof window.solanaWeb3 !== 'undefined';
+                
+                if (bufReady && solReady) {
+                    bothReady = true;
+                    if (bufferHandler) {
+                        window.removeEventListener('bufferReady', bufferHandler);
+                    }
+                    if (solanaHandler) {
+                        window.removeEventListener('solanaWeb3Ready', solanaHandler);
+                    }
+                    console.log('[ZK2P] All dependencies ready via events');
                     callback();
-                } else {
-                    waitForBuffer(callback, maxAttempts - 1);
                 }
             };
-            window.addEventListener('bufferReady', handler, { once: true });
+            
+            if (!bufferReady) {
+                bufferHandler = function() {
+                    checkAndInit();
+                };
+                window.addEventListener('bufferReady', bufferHandler, { once: true });
+            }
+            
+            if (!solanaReady) {
+                solanaHandler = function() {
+                    checkAndInit();
+                };
+                window.addEventListener('solanaWeb3Ready', solanaHandler, { once: true });
+            }
+            
+            // Also check immediately in case events already fired
+            checkAndInit();
         }
-        setTimeout(() => waitForBuffer(callback, maxAttempts - 1), 100);
+        
+        // Fallback: continue checking via timeout
+        setTimeout(() => waitForDependencies(callback, maxAttempts - 1), 100);
     } else {
-        console.error('[ZK2P] Buffer not available after waiting! Cannot initialize transaction module.');
-        console.error('[ZK2P] Make sure buffer polyfill is loaded before this script.');
-        console.error('[ZK2P] Buffer type:', typeof Buffer);
-        console.error('[ZK2P] window.Buffer type:', typeof window.Buffer);
+        console.error('[ZK2P] Dependencies not available after waiting! Cannot initialize transaction module.');
+        console.error('[ZK2P] Buffer available:', typeof Buffer !== 'undefined' && typeof Buffer.from === 'function');
+        console.error('[ZK2P] solanaWeb3 available:', typeof window !== 'undefined' && typeof window.solanaWeb3 !== 'undefined');
+        console.error('[ZK2P] Make sure Buffer polyfill and Solana Web3.js are loaded before this script.');
+        
+        // Show error to user if possible
+        if (typeof window !== 'undefined' && window.document) {
+            const errorMsg = document.createElement('div');
+            errorMsg.style.cssText = 'position: fixed; top: 50px; left: 0; right: 0; background: #ff4444; color: white; padding: 15px; text-align: center; z-index: 10000; font-family: sans-serif;';
+            errorMsg.innerHTML = '<strong>ZK2P Error:</strong> Failed to initialize transaction module. Please refresh the page.';
+            document.body.appendChild(errorMsg);
+        }
     }
 }
 
-waitForBuffer(function() {
-    console.log('[ZK2P] Initializing transaction module with Buffer support...');
-    console.log('[ZK2P] Buffer.from available:', typeof Buffer.from === 'function');
-    console.log('[ZK2P] Buffer.alloc available:', typeof Buffer.alloc === 'function');
+waitForDependencies(function() {
+    console.log('[ZK2P] Initializing transaction module with Buffer and Solana Web3.js support...');
     
 // Program instruction discriminators (first 8 bytes of instruction data)
 // These are derived from the Anchor instruction name hash: sha256("global:{instruction_name}").slice(0, 8)
@@ -824,3 +868,4 @@ if (typeof window !== 'undefined') {
 }); // End of waitForBuffer callback
 
 })(); // End of IIFE
+

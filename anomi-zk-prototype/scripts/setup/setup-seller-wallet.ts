@@ -44,10 +44,28 @@ async function main() {
   console.log('✅ Saved keypair to:', sellerWalletPath);
   console.log('');
 
+  // Update config.json automatically
+  const configPath = path.join(process.cwd(), 'demo-ui', 'config.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      config.sellerAddress = sellerWallet.publicKey.toString();
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+      console.log('✅ Updated demo-ui/config.json with seller address');
+      console.log('');
+    } catch (error) {
+      console.warn('⚠️  Could not update config.json:', (error as Error).message);
+      console.log('   Please manually update demo-ui/config.json with:');
+      console.log('   "sellerAddress": "' + sellerWallet.publicKey.toString() + '"');
+      console.log('');
+    }
+  } else {
+    console.warn('⚠️  config.json not found, please update manually:');
+    console.log('   "sellerAddress": "' + sellerWallet.publicKey.toString() + '"');
+    console.log('');
+  }
+
   console.log('=== Next Steps ===');
-  console.log('1. Update demo-ui/config.json with this seller address:');
-  console.log('   "sellerAddress": "' + sellerWallet.publicKey.toString() + '"');
-  console.log('');
   console.log('2. Fund the wallet with SOL (for devnet):');
   console.log('   solana airdrop 2', sellerWallet.publicKey.toString(), '--url devnet');
   console.log('   (Or use WSL if Solana CLI is installed there)');

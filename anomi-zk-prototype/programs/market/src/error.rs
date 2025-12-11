@@ -59,4 +59,14 @@ pub enum ErrorCode {
     
     #[msg("Settlement delay has not expired yet")]
     SettlementDelayNotExpired,
+    
+    // ZK Proof verification
+    #[msg("Invalid ZK proof")]
+    InvalidProof,
+    
+    #[msg("ZK proof order ID does not match")]
+    ProofOrderIdMismatch,
+    
+    #[msg("ZK proof verification failed")]
+    ProofVerificationFailed,
 }

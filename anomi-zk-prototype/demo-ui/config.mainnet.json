@@ -1,0 +1,12 @@
+{
+  "defaultTokenMint": "PLACEHOLDER_MAINNET_TOKEN_MINT",
+  "programId": "PLACEHOLDER_MAINNET_PROGRAM_ID",
+  "orderStoreProgramId": "PLACEHOLDER_MAINNET_ORDER_STORE_PROGRAM_ID",
+  "rpcUrl": "https://api.mainnet-beta.solana.com",
+  "sellerAddress": "PLACEHOLDER_MAINNET_SELLER_ADDRESS",
+  "buyerAddress": "PLACEHOLDER_MAINNET_BUYER_ADDRESS",
+  "zkFiatModeDefault": true,
+  "settlementDelaySeconds": 10,
+  "network": "mainnet"
+}
+

@@ -7,7 +7,7 @@ Write-Host "========================================`n"
 
 # Step 1: Compile circuit
 Write-Host "Step 1: Compiling circuit..."
-circom2 circuit.circom --r1cs --wasm -l node_modules
+circom2 ../src/circuit.circom --r1cs --wasm -l ../node_modules
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: Circuit compilation failed"
     exit 1
@@ -30,7 +30,7 @@ if (-not $ptauFile) {
     Write-Host "   (This will create power 13 ptau file for larger circuits)`n"
     Write-Host "2. Download from official source (~500MB):"
     Write-Host "   https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_13.ptau"
-    Write-Host "   Save to: powersOfTau28_hez_final_13.ptau`n"
+    Write-Host "   Save to: zk-stuff/powersOfTau28_hez_final_13.ptau`n"
     Write-Host "After obtaining the ptau file, run this script again.`n"
     exit 0
 }
@@ -48,6 +48,9 @@ Write-Host "✅ Proving key generated successfully`n"
 # Step 4: Export verification key
 Write-Host "Step 3: Exporting verification key..."
 snarkjs zkey export verificationkey circuit_final.zkey verification_key.json
+
+# Return to scripts directory
+Pop-Location
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: Failed to export verification key"
     exit 1
