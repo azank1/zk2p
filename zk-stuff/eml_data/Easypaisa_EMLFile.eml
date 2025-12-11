@@ -1,0 +1,334 @@
+Delivered-To: khanalkhansaib93@gmail.com
+Received: by 2002:a05:7010:178a:b0:4ec:91f1:67e5 with SMTP id n10csp7035584mdm;
+        Sun, 30 Nov 2025 22:08:18 -0800 (PST)
+X-Google-Smtp-Source: AGHT+IE5N7/j+RbdlJrI0Ij592x+5o8VTjPrtritGn1Khk87dGTmTUhOS693hdwWUcBw6MPupjWk
+X-Received: by 2002:a5d:5d08:0:b0:429:cd3f:f43b with SMTP id ffacd0b85a97d-42cc1ac9c81mr38950625f8f.4.1764569298358;
+        Sun, 30 Nov 2025 22:08:18 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1764569298; cv=none;
+        d=google.com; s=arc-20240605;
+        b=ZFz5Jt46HC3Nbcq5Q2ArRGs3cTK5d8jC9odk1bHSICDkIs0nC0sOv7yRHOYZvIl/y5
+         tkMZtn1pV2Mdg5bHjs3UqI6MdWuBsxLfq5bJjLMy3nOYP9s7z0AxVI31fPgBkwL+Jg4k
+         Jy7f2vcCZsise3zOfSjroxPjUhm0aonlHAMkJ+MrXpvffgSn0jv5cLI0E/qPt+BTzWGE
+         zhPBQ7tMj3rLVYazGPWzYg4nIkwhaR+A/QHW7TtRKh/29HGaaxGhc3xBEf+USWLM7O5/
+         KhtblbrQuDw4PSpymvKk4ETuO9FCArmJGPWKhLaYO7VEil/J5Id4a4kb3QJzSTffjiWR
+         RWmA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=dkim-signature:mime-version:subject:message-id:to:from:date;
+        bh=Y0wcEYIQGJFImNZ8RY/mTn1e5nFYMsV/O2oXoShYiUk=;
+        fh=3tWENhF1uStiC+Fw6ICnjS3c84clmDtpqT4H1g6T+MI=;
+        b=RP/2k2J2nAWTf02XTIoko2OsQA6JB53zIs1Kkh40Nb2k01xiZjC0sV+/R0nFM8i6GQ
+         PWETWm4DU4++iLyjkVJyrgJjWGBjzZWrWx0W1wH7Run44Vfoys4M19jgLPTkqDftkaal
+         14EhbzIO8dFEJEmPFsq19YODAzw2tR+syWugo6MfXhtbsN1YbSAicLDf8MebIyd/yPJ/
+         aGCOKB8kROJL72itn1FEGF207YoLSWcYD9wYU+7kdyxsWaJLe3LYW2QvLjL88qKxGEL7
+         o1dKN+n5BtLpqyzfWdRbqinQ43FUJI9g+Kg2APqe0rzReM43fVYNYQiy+gtXnPxkn+h+
+         sEEA==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@telenorbank.pk header.s=tmb1 header.b=wo5qznWZ;
+       spf=pass (google.com: domain of e.statement@telenorbank.pk designates 154.198.13.218 as permitted sender) smtp.mailfrom=e.statement@telenorbank.pk;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=telenorbank.pk
+Return-Path: <e.statement@telenorbank.pk>
+Received: from smtp01.telenorbank.pk (smtp01.telenorbank.pk. [154.198.13.218])
+        by mx.google.com with ESMTPS id ffacd0b85a97d-42e1cad64d8si5387393f8f.1670.2025.11.30.22.08.17
+        for <khanalkhansaib93@gmail.com>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 30 Nov 2025 22:08:18 -0800 (PST)
+Received-SPF: pass (google.com: domain of e.statement@telenorbank.pk designates 154.198.13.218 as permitted sender) client-ip=154.198.13.218;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@telenorbank.pk header.s=tmb1 header.b=wo5qznWZ;
+       spf=pass (google.com: domain of e.statement@telenorbank.pk designates 154.198.13.218 as permitted sender) smtp.mailfrom=e.statement@telenorbank.pk;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=telenorbank.pk
+Received: from webmail.telenorbank.pk ([10.250.90.6])
+	by smtp01.telenorbank.pk  with ESMTPS id 5B166OP0008397-5B166OPF008397
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <khanalkhansaib93@gmail.com>; Mon, 1 Dec 2025 11:06:24 +0500
+Received: from TLHREMBX01.telenorbank.pk (10.250.90.6) by
+ TLHREMBX01.telenorbank.pk (10.250.90.6) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.1748.36; Mon, 1 Dec 2025 11:06:16 +0500
+Received: from mesmail-prod-77c98f9474-f6xst (10.250.90.12) by
+ TLHREMBX01.telenorbank.pk (10.250.90.6) with Microsoft SMTP Server id
+ 15.2.1748.36 via Frontend Transport; Mon, 1 Dec 2025 11:06:16 +0500
+Date: Mon, 1 Dec 2025 11:08:14 +0500
+From: <e.statement@telenorbank.pk>
+To: <khanalkhansaib93@gmail.com>
+Message-ID: <388380567.4246925.1764569294307@mesmail-prod-77c98f9474-f6xst>
+Subject: Easypaisa Money Transfer Receipt
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="----=_Part_4246922_1320915273.1764569294280"
+X-FEAS-BEC-Info: WlpIGw0aAQkEARIJHAEHBlJSCRoLAAEeDUhZUEhYSFhIWUhZXkguLT4lWV48JVpcWFhYWF1QSFpeSA1GGxwJHA0FDQYcKBwNBA0GBxoKCQYDRhgDSFlIWVFIAwkDCQUFXVBaKA8FCQEERgsHBUhYSFpIWVlIWVhGWl1YRlFYRl5IUEhYSFhIWUhYSFhIWEhaXkgDAAkGCQQDAAkGGwkBClFbKA8FCQEERgsHBUhY
+X-FEAS-Client-IP: 10.250.90.6
+X-FE-Policy-ID: 62:0:3:SYSTEM
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; d=telenorbank.pk; s=tmb1; c=relaxed/relaxed;
+ h=date:from:to:message-id:subject:mime-version:content-type;
+ bh=Y0wcEYIQGJFImNZ8RY/mTn1e5nFYMsV/O2oXoShYiUk=;
+ b=wo5qznWZ3fAS+NXLl/mZbFTVBkeBAUahUdbUE4R/yZnLgd+CVUpOYcM3BjzXhHV1ZyFGZ1j7GEiR
+	NTylw2m8ccvWVgSUU0m87o9FSeiweW6SDfczODN0X49LH2TupJVK3fcEfNEf3G/u86RvRFGzu/XT
+	n0gNoYTDuc3Xs8jwHglR98ObNwjH3dAy7KzNGcMlS1wNkvbUqxKLAZvmx70x+L9sbINNk6k12Lyp
+	bbAGWDxfi7RWd5aMX9DHCPXEfe7cgXpEEbHxVp1ulJR7FpdFBFNHJgKjJ4avvVEtsNNjSaExhUGg
+	0STJZXP4U8Cz0dIe44BQw8wyHvn8ujZ7ui4sBw==
+
+------=_Part_4246922_1320915273.1764569294280
+Content-Type: multipart/related;
+	boundary="----=_Part_4246923_315095221.1764569294280"
+
+------=_Part_4246923_315095221.1764569294280
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns=3D"http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8">
+<meta content=3D"IE=3Dedge" http-equiv=3D"X-UA-Compatible">
+<meta content=3D"width=3Ddevice-width, initial-scale=3D1.0" name=3D"viewpor=
+t">
+</head>
+<body>
+<div style=3D"padding: 0; margin: 0;">
+<div>
+<div style=3D"float: left; height: 9px; width: 88.5%; background-color: #00=
+BC5F; margin-right: 1.5%;">
+</div>
+<div style=3D"  height: 9px; width: 10%;  float: left; background-color: bl=
+ack;"></div>
+</div>
+<div style=3D"  margin-left: 3%; margin-right: 3%;">
+<div style=3D" text-align: center;">
+<div style=3D"opacity: 0">.</div>
+<div style=3D" margin-top: 5%;">
+<div><img alt=3D"" src=3D"https://img.easypaisa.telenorbank.pk/group1/M00/7=
+9/FB/CqwYCGHerWmANMsjAAARO4pnkOI082.png">
+</div>
+<div style=3D"margin-top: 3%"><img alt=3D"" src=3D"https://img.easypaisa.te=
+lenorbank.pk/group1/M00/7A/03/CqwYCWHerbGAUOsyAAAHgg2RQuA025.png">
+</div>
+</div>
+<div style=3D"   font-family: 'SF Pro Display', sans-serif; font-size: 19px=
+; font-weight: bold; line-height: 23px; color: #000000; font-style: normal;=
+ text-align: center; margin-top: 18px;">
+<p style=3D"padding-top: 1.5%; padding-bottom: .5%;">Transaction Successful=
+</p>
+</div>
+<div style=3D"font-family: 'SF Pro Display', sans-serif; font-size: 16px;  =
+color: #000000; font-style: italic; line-height: 19px; font-weight: bold;">
+<p>Hi AZAAN HAIDER,</p>
+</div>
+<div style=3D"  font-family: 'SF Pro Display', sans-serif; font-style: norm=
+al;font-weight: normal; line-height: 20px; text-align: center; margin-top: =
+18px; font-size: 16px; color: #000000cc;">
+<p>Money Transfer of <span style=3D"font-weight: bold">Rs. 300.0</span> on =
+<span style=3D"font-weight: bold">
+01-Dec-2025</span> to <span style=3D"font-weight: bold">Easypaisa</span> wa=
+s successful
+</p>
+</div>
+</div>
+<hr style=3D" margin-top: 3%; mix-blend-mode: normal; background-color: ali=
+ceblue;  opacity: 0.4; height: .5px;">
+<div>
+<div style=3D"font-family: 'SF Pro Display', sans-serif; font-style: normal=
+; font-weight: bold; margin-top: 2%; color: #16c26c; font-size: 16px; text-=
+align: center; text-transform: uppercase; line-height: 19px;">
+TRANSACTION DETAILS </div>
+</div>
+<div style=3D"  margin-top: 1%;
+
+            background-color: #919ea80f;
+
+            border-radius: 6px;">
+<table style=3D"  overflow-x: auto; width: 100%;">
+<tbody>
+<tr>
+<td style=3D" font-family: 'SF Pro Display', sans-serif; font-weight: 500; =
+padding-top: 10px;font-size: 13px; padding-bottom: 10px;  padding-left: 2%;=
+ line-height: 20px; margin-top: auto; color: #373E43; font-style: normal;">
+Transaction Type </td>
+<td style=3D"font-family: 'SF Pro Display', sans-serif; font-style: normal;=
+ color: #373e43c2; text-align: right;padding-right: 2%;margin-top: auto;lin=
+e-height: 20px;font-weight: 500;font-size: 13px;">
+Money Transfer to Easypaisa </td>
+</tr>
+<tr>
+<td style=3D" font-family: 'SF Pro Display', sans-serif; font-weight: 500; =
+padding-top: 10px;font-size: 13px; padding-bottom: 10px;  padding-left: 2%;=
+ line-height: 20px; margin-top: auto; color: #373E43; font-style: normal;">
+Transaction ID </td>
+<td style=3D"font-family: 'SF Pro Display', sans-serif; font-style: normal;=
+ color: #373e43c2; text-align: right;padding-right: 2%;margin-top: auto;lin=
+e-height: 20px;font-weight: 500;font-size: 13px;">
+42886231749 </td>
+</tr>
+<tr>
+<td style=3D" font-family: 'SF Pro Display', sans-serif; font-weight: 500; =
+padding-top: 10px;font-size: 13px; padding-bottom: 10px;  padding-left: 2%;=
+ line-height: 20px; margin-top: auto; color: #373E43; font-style: normal;">
+Date &amp; Time </td>
+<td style=3D"font-family: 'SF Pro Display', sans-serif; font-style: normal;=
+ color: #373e43c2; text-align: right;padding-right: 2%;margin-top: auto;lin=
+e-height: 20px;font-weight: 500;font-size: 13px;">
+01-Dec-2025 11:00:30 </td>
+</tr>
+<tr>
+<td style=3D" font-family: 'SF Pro Display', sans-serif; font-weight: 500; =
+padding-top: 10px;font-size: 13px; padding-bottom: 10px;  padding-left: 2%;=
+ line-height: 20px; margin-top: auto; color: #373E43; font-style: normal;">
+Sender Name </td>
+<td style=3D"font-family: 'SF Pro Display', sans-serif; font-style: normal;=
+ color: #373e43c2; text-align: right;padding-right: 2%;margin-top: auto;lin=
+e-height: 20px;font-weight: 500;font-size: 13px;">
+AZAAN HAIDER </td>
+</tr>
+<tr>
+<td style=3D" font-family: 'SF Pro Display', sans-serif; font-weight: 500; =
+padding-top: 10px;font-size: 13px; padding-bottom: 10px;  padding-left: 2%;=
+ line-height: 20px; margin-top: auto; color: #373E43; font-style: normal;">
+Sender Number </td>
+<td style=3D"font-family: 'SF Pro Display', sans-serif; font-style: normal;=
+ color: #373e43c2; text-align: right;padding-right: 2%;margin-top: auto;lin=
+e-height: 20px;font-weight: 500;font-size: 13px;">
+03338743021 </td>
+</tr>
+<tr>
+<td style=3D" font-family: 'SF Pro Display', sans-serif; font-weight: 500; =
+padding-top: 10px;font-size: 13px; padding-bottom: 10px;  padding-left: 2%;=
+ line-height: 20px; margin-top: auto; color: #373E43; font-style: normal;">
+Receiver Name </td>
+<td style=3D"font-family: 'SF Pro Display', sans-serif; font-style: normal;=
+ color: #373e43c2; text-align: right;padding-right: 2%;margin-top: auto;lin=
+e-height: 20px;font-weight: 500;font-size: 13px;">
+MUHAMMAD IMRAN </td>
+</tr>
+<tr>
+<td style=3D" font-family: 'SF Pro Display', sans-serif; font-weight: 500; =
+padding-top: 10px;font-size: 13px; padding-bottom: 10px;  padding-left: 2%;=
+ line-height: 20px; margin-top: auto; color: #373E43; font-style: normal;">
+Receiver Number </td>
+<td style=3D"font-family: 'SF Pro Display', sans-serif; font-style: normal;=
+ color: #373e43c2; text-align: right;padding-right: 2%;margin-top: auto;lin=
+e-height: 20px;font-weight: 500;font-size: 13px;">
+03015591132 </td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style=3D" text-align: center;">
+<div style=3D"font-family: 'SF Pro Display', sans-serif;
+
+            font-style: normal;
+
+            font-weight: bold;
+
+            margin-top: 2%;
+
+            color: #16c26c;
+
+            font-size: 16px;
+
+            text-align: center;
+
+            text-transform: uppercase;
+
+            line-height: 19px;">
+AMOUNT DETAILS </div>
+</div>
+<div style=3D"margin-top: 1%; background-color: #919ea80f;border-radius: 6p=
+x;">
+<table style=3D"overflow-x: auto;
+
+            width: 100%;">
+<tbody>
+<tr>
+<td style=3D" font-family: 'SF Pro Display', sans-serif; font-weight: 500; =
+padding-top: 10px;font-size: 13px; padding-bottom: 10px;  padding-left: 2%;=
+ line-height: 20px; margin-top: auto; color: #373E43; font-style: normal;">
+Transfer amount </td>
+<td style=3D"font-family: 'SF Pro Display', sans-serif; font-style: normal;=
+ color: #373e43c2; text-align: right;padding-right: 2%;margin-top: auto;lin=
+e-height: 20px;font-weight: 500;font-size: 13px;">
+Rs. 300.0 </td>
+</tr>
+<tr>
+<td style=3D" font-family: 'SF Pro Display', sans-serif; font-weight: 500; =
+padding-top: 10px;font-size: 13px; padding-bottom: 10px;  padding-left: 2%;=
+ line-height: 20px; margin-top: auto; color: #373E43; font-style: normal;">
+Fee </td>
+<td style=3D"font-family: 'SF Pro Display', sans-serif; font-style: normal;=
+ color: #373e43c2; text-align: right;padding-right: 2%;margin-top: auto;lin=
+e-height: 20px;font-weight: 500;font-size: 13px;">
+Rs. 0.00 </td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style=3D"margin-top: 2%; background-color: #00bc5f0f; border-radius: 6=
+px; height: 45px;">
+<table style=3D"  width: 100%; height: 100%;">
+<tbody>
+<tr>
+<td style=3D"font-family: 'SF Pro Display', sans-serif; font-style: normal;=
+ font-size: 18px; padding-left: 2%; margin-top: 1%; color: #000000; line-he=
+ight: 20px;font-weight: 600;">
+Total </td>
+<td style=3D" font-family: 'SF Pro Display', sans-serif;
+
+            font-style: normal;
+
+            color: #1A181F;
+
+            text-align: right;
+
+            padding-right: 2%;
+
+            margin-top: 1%;
+
+            line-height: 21px;
+
+            font-size: 18px;
+
+            font-weight: 600;">
+Rs. 300.0 </td>
+</tr>
+</tbody>
+</table>
+</div>
+<div style=3D"   margin-top: 3%; margin-bottom: 3%;text-align: center;">
+<div style=3D" font-family: 'SF Pro Display', sans-serif; font-style: norma=
+l; font-weight: normal; font-size: 12px; line-height: 25px; text-align: cen=
+ter; color: #919EA8;">
+For any queries, please call the Easypaisa helpline on 3737, 111-003-737 or=
+ send an email to
+<span style=3D" text-align: center; font-family: 'SF Pro Display', sans-ser=
+if; font-style: normal; font-weight: 500; font-size: 12px; color: #3bcb84;"=
+>
+complaints@telenorbank.pk</span> </div>
+</div>
+</div>
+<div style=3D"height: 17px; float: bottom; width: 100%; background-color: #=
+00BC5F;">
+</div>
+</div>
+<hr>
+<p style=3D"font-size:8pt; line-height:10pt; font-family: 'Cambria','times =
+roman',serif;">
+Disclaimer:<br>
+This message contains confidential and proprietary information and is inten=
+ded for the individual addressed only. If you are not the intended recipien=
+t, you must not disseminate, distribute, or copy whole or any part or attac=
+hment of this e-mail. Please notify
+ the sender immediately by e-mail and permanently delete this e-mail from y=
+our system and mailbox. E-mail transmission can be intercepted, corrupted, =
+lost, destroyed, arrive late or incomplete and may contain viruses. The sen=
+der does not accept liability for
+ any error or omission in the content of this message which may arise as a =
+result of the transmission, incase verification is required please request =
+a hard-copy version.</p>
+</body>
+</html>
+
+------=_Part_4246923_315095221.1764569294280--
+
+------=_Part_4246922_1320915273.1764569294280--

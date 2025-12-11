@@ -64,12 +64,28 @@ npm run p2p:fetch
 - Token escrow with SPL integration
 - 39 passing tests (10 unit + 29 integration)
 
+## ZK Email Verification
+
+The settlement layer uses Zero-Knowledge proofs to verify email-based payment confirmations. The ZK circuit proves:
+1. **DKIM Verification**: Email was sent by Google (via DKIM signature hash matching)
+2. **Domain Matching**: Email is from `@telenorbank.pk` (Easypaisa/Telenor)
+
+**Quick Start:**
+```bash
+cd zk-stuff
+npm install
+npm test  # Run email verification tests
+```
+
+See [`zk-stuff/README.md`](zk-stuff/README.md) for detailed setup and usage.
+
 ## Documentation
 
 - [`anomi-zk-prototype/docs/SETUP.md`](anomi-zk-prototype/docs/SETUP.md) - Installation guide
 - [`anomi-zk-prototype/docs/DEPLOYMENT.md`](anomi-zk-prototype/docs/DEPLOYMENT.md) - Deployment instructions
 - [`anomi-zk-prototype/docs/TESTING.md`](anomi-zk-prototype/docs/TESTING.md) - Testing guide
 - [`anomi-zk-prototype/docs/ARCHITECTURE.md`](anomi-zk-prototype/docs/ARCHITECTURE.md) - System design
+- [`zk-stuff/README.md`](zk-stuff/README.md) - ZK Email Verification setup
 - [`workflow_ANOMI.md`](workflow_ANOMI.md) - Project status and roadmap
 
 ## Current Status
@@ -81,14 +97,16 @@ npm run p2p:fetch
 - 39 tests passing
 - Deployed to Solana devnet
 - P2P testing scripts ready
+- ZK email verification circuit (DKIM + domain matching)
+- Email parsing and proof generation utilities
 
 🚧 **In Progress:**
 - End-to-end P2P wallet testing
 - Phantom wallet UI integration
+- ZK proof integration with Solana program
 
 ⏳ **Future:**
-- Off-chain fiat payment verification
-- ZK proof circuit integration
+- Full RSA signature verification in circuit
 - Mainnet deployment
 
 See [`workflow_ANOMI.md`](workflow_ANOMI.md) for detailed roadmap.

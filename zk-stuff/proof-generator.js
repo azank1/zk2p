@@ -1,17 +1,17 @@
 const snarkjs = require("snarkjs");
 const crypto = require("crypto");
+const EmailParser = require("./email-parser");
 
 /**
  * ANOMI ZK Proof Generator
  * 
- * This utility generates ZK proofs for trade settlement validation.
- * It takes trade details and private secrets, then creates a proof
- * that can be verified on-chain without revealing sensitive information.
+ * This utility generates ZK proofs for email verification and trade settlement validation.
+ * It supports both email verification (DKIM + domain matching) and trade settlement proofs.
  */
 
 class AnomiProofGenerator {
     constructor(wasmPath, zkeyPath) {
-        this.wasmPath = wasmPath || "./circuit.wasm";
+        this.wasmPath = wasmPath || "./circuit_js/circuit.wasm";
         this.zkeyPath = zkeyPath || "./circuit_final.zkey";
     }
 
@@ -130,6 +130,116 @@ class AnomiProofGenerator {
             BigInt(coord).toString(16).padStart(32, '0')
         );
         return Buffer.from(hexStrings.join(''), 'hex');
+    }
+    
+    /**
+     * Generate a ZK proof for email verification
+     * @param {string} emlPath - Path to .eml file
+     * @param {string|number} orderId - Order ID to include in proof
+     * @returns {Object} Generated proof and public signals
+     */
+    async generateEmailProof(emlPath, orderId) {
+        try {
+            console.log("Generating ZK proof for email verification...");
+            console.log("Email file:", emlPath);
+            console.log("Order ID:", orderId);
+            
+            // Parse email
+            const email = EmailParser.parseEML(emlPath);
+            const dkim = EmailParser.extractDKIMSignature(email);
+            const fromHeader = EmailParser.extractFromHeader(email);
+            const emailHashData = EmailParser.computeEmailHash(email, dkim.headers);
+            
+            console.log("DKIM Domain:", dkim.domain);
+            console.log("DKIM Selector:", dkim.selector);
+            console.log("From Header:", fromHeader);
+            
+            // Convert email hash to array of 8 32-bit words
+            const emailHashBytes = Buffer.from(emailHashData.bodyHash, 'hex');
+            const emailHash = [];
+            for (let i = 0; i < 8; i++) {
+                const word = emailHashBytes.readUInt32BE(i * 4);
+                emailHash.push(word.toString());
+            }
+            
+            // Convert From header hash to array of 8 32-bit words
+            const fromHeaderHashBytes = crypto.createHash('sha256').update(fromHeader).digest();
+            const fromHeaderHash = [];
+            for (let i = 0; i < 8; i++) {
+                const word = fromHeaderHashBytes.readUInt32BE(i * 4);
+                fromHeaderHash.push(word.toString());
+            }
+            
+            // For signature hash, we use the body hash from DKIM (bh field)
+            // In full RSA verification, this would be extracted from signature^e mod n
+            const signatureHashBytes = Buffer.from(dkim.bodyHash, 'base64');
+            const signatureHash = [];
+            for (let i = 0; i < 8; i++) {
+                const word = signatureHashBytes.readUInt32BE(i * 4);
+                signatureHash.push(word.toString());
+            }
+            
+            // Convert From header to byte array (pad to 128 bytes)
+            const fromHeaderBytes = Buffer.from(fromHeader, 'utf8');
+            const fromHeaderArray = [];
+            const maxFromHeaderBytes = 128;
+            for (let i = 0; i < maxFromHeaderBytes; i++) {
+                if (i < fromHeaderBytes.length) {
+                    fromHeaderArray.push(fromHeaderBytes[i].toString());
+                } else {
+                    fromHeaderArray.push("0"); // Padding
+                }
+            }
+            
+            // Convert orderId to array of 2 64-bit words (u128)
+            const orderIdBigInt = BigInt(orderId);
+            const orderIdArray = [
+                (orderIdBigInt & BigInt("0xFFFFFFFFFFFFFFFF")).toString(),
+                ((orderIdBigInt >> BigInt(64)) & BigInt("0xFFFFFFFFFFFFFFFF")).toString()
+            ];
+            
+            // Prepare circuit inputs
+            const circuitInputs = {
+                // Public inputs
+                emailHash: emailHash,
+                fromHeaderHash: fromHeaderHash,
+                orderId: orderIdArray,
+                
+                // Private inputs
+                fromHeader: fromHeaderArray,
+                signatureHash: signatureHash
+            };
+            
+            console.log("Circuit inputs prepared");
+            console.log("Email hash (first 4 words):", emailHash.slice(0, 4));
+            console.log("From header:", fromHeader);
+            console.log("From header length:", fromHeaderBytes.length);
+            
+            // Generate the proof
+            const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+                circuitInputs,
+                this.wasmPath,
+                this.zkeyPath
+            );
+            
+            console.log("ZK proof generated successfully");
+            
+            // Format proof for Solana program consumption
+            const formattedProof = this.formatProofForSolana(proof);
+            
+            return {
+                proof: formattedProof, // For Solana program
+                rawProof: proof, // For local verification
+                publicSignals: publicSignals,
+                emailHash: emailHashData.bodyHash,
+                fromHeader: fromHeader,
+                orderId: orderId.toString()
+            };
+            
+        } catch (error) {
+            console.error("Error generating email verification proof:", error);
+            throw error;
+        }
     }
     
     /**

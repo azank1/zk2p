@@ -1,0 +1,16 @@
+# Generated circuit files
+circuit.r1cs
+circuit_js/
+circuit_final.zkey
+verification_key.json
+*.ptau
+pot*.ptau
+
+# Node modules
+node_modules/
+package-lock.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
